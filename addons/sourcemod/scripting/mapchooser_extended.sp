@@ -41,7 +41,7 @@
 #undef REQUIRE_EXTENSIONS
 #include <builtinvotes>
 
-#define VERSION "1.8.1"
+#define VERSION "1.8.2"
 // Based on SourceMod Mapchooser 1.4.0
 
 public Plugin:myinfo =
@@ -293,12 +293,21 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 
 public OnAllPluginsLoaded()
 {
-	g_BuiltinVotes = LibraryExists("builtinvotes");
+	decl String:game[64];
+	GetGameFolderName(game, sizeof(game));
+
+	if (StrEqual(game, "tf"))
+	{
+		g_BuiltinVotes = LibraryExists("builtinvotes");
+	}
 }
 
 public OnLibraryAdded(const String:name[])
 {
-	if (StrEqual(name, "builtinvotes"))
+	decl String:game[64];
+	GetGameFolderName(game, sizeof(game));
+	
+	if (StrEqual(game, "tf") && StrEqual(name, "builtinvotes"))
 	{
 		g_BuiltinVotes = true;
 	}
@@ -736,14 +745,17 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 {
 	g_WaitingForVote = true;
 	
-	if (IsVoteInProgress())
+	// Check if a builtinvote is in progress first
+	// BuiltinVotes running at the same time as a regular vote can cause hintbox problems,
+	// so always check for a standard vote
+	if (IsVoteInProgress() || (g_BuiltinVotes && IsBuiltinVoteInProgress() ))
 	{
 		// Can't start a vote, try again in 5 seconds.
 		//g_RetryTimer = CreateTimer(5.0, Timer_StartMapVote, _, TIMER_FLAG_NO_MAPCHANGE);
 		
 		PrintToChatAll("[MCE] %t", "Cannot Start Vote", FAILURE_TIMER_LENGTH);
 		new Handle:data;
-		g_RetryTimer = CreateDataTimer(1.0, Timer_StartMapVote, data, TIMER_FLAG_NO_MAPCHANGE);
+		g_RetryTimer = CreateDataTimer(1.0, Timer_StartMapVote, data, TIMER_FLAG_NO_MAPCHANGE | TIMER_REPEAT);
 		
 		/* Mapchooser Extended */
 		WritePackCell(data, FAILURE_TIMER_LENGTH);
