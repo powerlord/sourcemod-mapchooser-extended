@@ -132,6 +132,7 @@ new Handle:g_MapVoteRunoffStartForward = INVALID_HANDLE;
 new g_RunoffCount = 0;
 new g_mapOfficialFileSerial = -1;
 new bool:g_BuiltinVotes = false;
+new String:g_GameModName[64];
 
 /* Upper bound of how many team there could be */
 #define MAXTEAMS 10
@@ -174,6 +175,8 @@ public OnPluginStart()
 	g_OldMapList = CreateArray(arraySize);
 	g_NextMapList = CreateArray(arraySize);
 	g_OfficialList = CreateArray(arraySize);
+	
+	GetGameFolderName(g_GameModName, sizeof(g_GameModName));
 	
 	g_Cvar_EndOfMapVote = CreateConVar("mce_endvote", "1", "Specifies if MapChooser should run an end of map vote", _, true, 0.0, true, 1.0);
 
@@ -293,21 +296,12 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 
 public OnAllPluginsLoaded()
 {
-	decl String:game[64];
-	GetGameFolderName(game, sizeof(game));
-
-	if (StrEqual(game, "tf"))
-	{
-		g_BuiltinVotes = LibraryExists("builtinvotes");
-	}
+	g_BuiltinVotes = LibraryExists("builtinvotes") && StrEqual(g_GameModName, "tf");
 }
 
 public OnLibraryAdded(const String:name[])
 {
-	decl String:game[64];
-	GetGameFolderName(game, sizeof(game));
-	
-	if (StrEqual(game, "tf") && StrEqual(name, "builtinvotes"))
+	if (StrEqual(name, "builtinvotes") && StrEqual(g_GameModName, "tf"))
 	{
 		g_BuiltinVotes = true;
 	}
@@ -1768,11 +1762,9 @@ stock SetupWarningTimer(WarningType:type, MapChange:when=MapChange_MapEnd, Handl
 
 stock InitializeOfficialMapList()
 {
-	new String:game_mod_name[32];
 	decl String:mapListPath[PLATFORM_MAX_PATH];
 	
-	GetGameFolderName(game_mod_name, sizeof(game_mod_name));
-	BuildPath(Path_SM, mapListPath, sizeof(mapListPath), "configs/mapchooser_extended/maps/%s.txt", game_mod_name);
+	BuildPath(Path_SM, mapListPath, sizeof(mapListPath), "configs/mapchooser_extended/maps/%s.txt", g_GameModName);
 	SetMapListCompatBind("official", mapListPath);
 
 	// If this fails, we want it to have an empty adt_array
@@ -1782,12 +1774,12 @@ stock InitializeOfficialMapList()
 		MAPLIST_FLAG_CLEARARRAY|MAPLIST_FLAG_NO_DEFAULT)
 		!= INVALID_HANDLE)
 	{
-		LogMessage("Loaded map list for %s.", game_mod_name);
+		LogMessage("Loaded map list for %s.", g_GameModName);
 	}
 	// Check if the map list was ever loaded
 	else if (g_mapOfficialFileSerial == -1)
 	{
-		LogMessage("No official map list found for %s. Consider submitting one!", game_mod_name);
+		LogMessage("No official map list found for %s. Consider submitting one!", g_GameModName);
 	}
 }
 
