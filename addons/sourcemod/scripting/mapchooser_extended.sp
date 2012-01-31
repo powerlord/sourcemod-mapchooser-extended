@@ -35,11 +35,11 @@
 #pragma semicolon 1
 #include <sourcemod>
 #include <mapchooser>
-#include <mapchooser_extended>
+#include "include/mapchooser_extended"
 #include <nextmap>
 
 #undef REQUIRE_EXTENSIONS
-#include <builtinvotes>
+#include "include/builtinvotes"
 
 #define VERSION "1.8.2"
 // Based on SourceMod Mapchooser 1.4.0
