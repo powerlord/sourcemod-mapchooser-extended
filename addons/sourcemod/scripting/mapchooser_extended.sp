@@ -41,7 +41,7 @@
 #undef REQUIRE_EXTENSIONS
 #include "include/builtinvotes"
 
-#define VERSION "1.8.2"
+#define VERSION "1.9.0rc1"
 // Based on SourceMod Mapchooser 1.4.0
 
 public Plugin:myinfo =
@@ -117,6 +117,7 @@ new Handle:g_Cvar_TimerLocation = INVALID_HANDLE;
 new Handle:g_Cvar_ExtendPosition = INVALID_HANDLE;
 new Handle:g_Cvar_MarkCustomMaps = INVALID_HANDLE;
 new Handle:g_Cvar_RandomizeNominations = INVALID_HANDLE;
+new Handle:g_Cvar_HideTimer = INVALID_HANDLE;
 
 /* Mapchooser Extended Data Handles */
 new Handle:g_OfficialList = INVALID_HANDLE;
@@ -210,6 +211,7 @@ public OnPluginStart()
 	g_Cvar_MarkCustomMaps = CreateConVar("mce_markcustommaps", "1", "Mark custom maps in the vote list. 0 = Disabled, 1 = Mark with *, 2 = Mark with phrase.", _, true, 0.0, true, 2.0);
 	g_Cvar_ExtendPosition = CreateConVar("mce_extendposition", "0", "Position of Extend/Don't Change options. 0 = at end, 1 = at start.", _, true, 0.0, true, 1.0);
 	g_Cvar_RandomizeNominations = CreateConVar("mce_randomizeorder", "0", "Randomize map order?", _, true, 0.0, true, 1.0);
+	g_Cvar_HideTimer = CreateConVar("mce_hidetimer", "0", "Hide the MapChooser Extended warning timer", _, true, 0.0, true, 1.0);
 
 	RegAdminCmd("sm_mapvote", Command_Mapvote, ADMFLAG_CHANGEMAP, "sm_mapvote - Forces MapChooser to attempt to run a map vote now.");
 	RegAdminCmd("sm_setnextmap", Command_SetNextmap, ADMFLAG_CHANGEMAP, "sm_setnextmap <map>");
@@ -221,7 +223,12 @@ public OnPluginStart()
 	g_Cvar_Winlimit = FindConVar("mp_winlimit");
 	g_Cvar_Maxrounds = FindConVar("mp_maxrounds");
 	g_Cvar_Fraglimit = FindConVar("mp_fraglimit");
-	g_Cvar_Bonusroundtime = FindConVar("mp_bonusroundtime");
+	
+	// DoD:S uses a different cvar name for bonus round time
+	g_Cvar_Bonusroundtime = FindConVar("dod_bonusroundtime");
+	if (g_Cvar_Bonusroundtime == INVALID_HANDLE)
+		g_Cvar_Bonusroundtime = FindConVar("mp_bonusroundtime");
+	
 	g_Cvar_VoteNextLevel = FindConVar("sv_vote_issue_nextlevel_allowed");
 	
 	if (g_Cvar_Winlimit != INVALID_HANDLE || g_Cvar_Maxrounds != INVALID_HANDLE)
@@ -317,6 +324,7 @@ public OnLibraryRemoved(const String:name[])
 
 public OnConfigsExecuted()
 {
+	/*
 	if (ReadMapList(g_MapList,
 					 g_mapFileSerial, 
 					 "mapchooser",
@@ -329,6 +337,7 @@ public OnConfigsExecuted()
 			LogError("Unable to create a valid map list.");
 		}
 	}
+	*/
 	
 	// Disable the next level vote in TF2.
 	// This has two effects: 1. Stop the next level vote (which overlaps rtv functionality).
@@ -521,26 +530,29 @@ public Action:Timer_StartMapVote(Handle:timer, Handle:data)
 	Call_PushCell(warningTimeRemaining);
 	Call_Finish();
 
-	new TimerLocation:timerLocation = TimerLocation:GetConVarInt(g_Cvar_TimerLocation);
-
-	switch(timerLocation)
+	if (timePassed == 0 || !GetConVarBool(g_Cvar_HideTimer))
 	{
-		case TimerLocation_Center:
+		new TimerLocation:timerLocation = TimerLocation:GetConVarInt(g_Cvar_TimerLocation);
+
+		switch(timerLocation)
 		{
-			PrintCenterTextAll("%t", warningPhrase, warningTimeRemaining);
-		}
-		
-		case TimerLocation_Chat:
-		{
-			PrintToChatAll("%t", warningPhrase, warningTimeRemaining);
-		}
-		
-		default:
-		{
-			PrintHintTextToAll("%t", warningPhrase, warningTimeRemaining);
+			case TimerLocation_Center:
+			{
+				PrintCenterTextAll("%t", warningPhrase, warningTimeRemaining);
+			}
+			
+			case TimerLocation_Chat:
+			{
+				PrintToChatAll("%t", warningPhrase, warningTimeRemaining);
+			}
+			
+			default:
+			{
+				PrintHintTextToAll("%t", warningPhrase, warningTimeRemaining);
+			}
 		}
 	}
-	
+
 	if (timePassed++ >= warningMaxTime)
 	{
 		if (timer == g_RetryTimer)
@@ -899,6 +911,15 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 		new i = nominationsToAdd;
 		new count = 0;
 		new availableMaps = GetArraySize(g_NextMapList);
+		
+		if (availableMaps == 0)
+		{
+			LogError("No maps available");
+		}
+		else if (availableMaps < voteSize)
+		{
+			voteSize = availableMaps;
+		}
 		
 		while (i < voteSize)
 		{
@@ -1719,7 +1740,21 @@ SetupRunoffTimer(MapChange:when, Handle:mapList)
 
 stock SetupWarningTimer(WarningType:type, MapChange:when=MapChange_MapEnd, Handle:mapList=INVALID_HANDLE)
 {
-	if (!GetArraySize(g_MapList) || (when == MapChange_MapEnd && (!GetConVarBool(g_Cvar_EndOfMapVote) || g_MapVoteCompleted)) || g_HasVoteStarted)
+	// Load the map list from the file
+	if (ReadMapList(g_MapList,
+			 g_mapFileSerial, 
+			 "mapchooser",
+			 MAPLIST_FLAG_CLEARARRAY|MAPLIST_FLAG_MAPSFOLDER)
+	!= INVALID_HANDLE)
+	{
+		if (g_mapFileSerial == -1)
+		{
+			LogError("Unable to create a valid map list.");
+			return;
+		}
+	}
+
+	if (!GetArraySize(g_MapList) || (when == MapChange_MapEnd && !GetConVarBool(g_Cvar_EndOfMapVote)) || g_MapVoteCompleted || g_HasVoteStarted)
 	{
 		return;
 	}
