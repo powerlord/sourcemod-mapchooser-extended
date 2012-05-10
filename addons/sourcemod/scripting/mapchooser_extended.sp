@@ -134,6 +134,7 @@ new g_RunoffCount = 0;
 new g_mapOfficialFileSerial = -1;
 new bool:g_BuiltinVotes = false;
 new String:g_GameModName[64];
+new bool:g_WarningInProgress;
 
 /* Upper bound of how many team there could be */
 #define MAXTEAMS 10
@@ -182,7 +183,7 @@ public OnPluginStart()
 	g_Cvar_EndOfMapVote = CreateConVar("mce_endvote", "1", "Specifies if MapChooser should run an end of map vote", _, true, 0.0, true, 1.0);
 
 	g_Cvar_StartTime = CreateConVar("mce_starttime", "10.0", "Specifies when to start the vote based on time remaining.", _, true, 1.0);
-	g_Cvar_StartRounds = CreateConVar("mce_startround", "2.0", "Specifies when to start the vote based on rounds remaining. Use 0 on TF2 to start vote during bonus round time", _, true, 0.0);
+	g_Cvar_StartRounds = CreateConVar("mce_startround", "2.0", "Specifies when to start the vote based on rounds remaining. Use 0 on DoD:S, CS:S, and TF2 to start vote during bonus round time", _, true, 0.0);
 	g_Cvar_StartFrags = CreateConVar("mce_startfrags", "5.0", "Specifies when to start the vote base on frags remaining.", _, true, 1.0);
 	g_Cvar_ExtendTimeStep = CreateConVar("mce_extend_timestep", "15", "Specifies how much many more minutes each extension makes", _, true, 5.0);
 	g_Cvar_ExtendRoundStep = CreateConVar("mce_extend_roundstep", "5", "Specifies how many more rounds each extension makes", _, true, 1.0);
@@ -195,7 +196,7 @@ public OnPluginStart()
 	g_Cvar_VoteDuration = CreateConVar("mce_voteduration", "20", "Specifies how long the mapvote should be available for.", _, true, 5.0);
 
 	// MapChooser Extended cvars
-	CreateConVar("mce_version", VERSION, "MapChooser Extended Version", FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY|FCVAR_DONTRECORD);
+	CreateConVar("mce_version", VERSION, "MapChooser Extended Version", FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_NOTIFY|FCVAR_DONTRECORD);
 
 	g_Cvar_RunOff = CreateConVar("mce_runoff", "1", "Hold run off votes if winning choice has less than a certain percentage of votes", _, true, 0.0, true, 1.0);
 	g_Cvar_RunOffPercent = CreateConVar("mce_runoffpercent", "50", "If winning choice has less than this percent of votes, hold a runoff", _, true, 0.0, true, 100.0);
@@ -297,6 +298,9 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 	CreateNative("GetExcludeMapList", Native_GetExcludeMapList);
 	CreateNative("GetNominatedMapList", Native_GetNominatedMapList);
 	CreateNative("EndOfMapVoteEnabled", Native_EndOfMapVoteEnabled);
+	
+	// MapChooser Extended natives
+	CreateNative("IsMapOfficial", Native_IsMapOfficial);
 
 	return APLRes_Success;
 }
@@ -347,7 +351,6 @@ public OnConfigsExecuted()
 		SetConVarBool(g_Cvar_VoteNextLevel, false);
 	}
 	
-	CreateNextVote();
 	SetupTimeleftTimer();
 	
 	g_TotalRounds = 0;
@@ -364,12 +367,11 @@ public OnConfigsExecuted()
 	{
 		g_winCount[i] = 0;	
 	}
-	
 
-	/* Check if mapchooser will attempt to start mapvote during bonus round time - TF2 Only */
+	/* Check if mapchooser will attempt to start mapvote during bonus round time */
 	if ((g_Cvar_Bonusroundtime != INVALID_HANDLE) && !GetConVarInt(g_Cvar_StartRounds))
 	{
-		if (GetConVarFloat(g_Cvar_Bonusroundtime) <= GetConVarFloat(g_Cvar_VoteDuration))
+		if (!GetConVarInt(g_Cvar_StartTime) && GetConVarFloat(g_Cvar_Bonusroundtime) <= GetConVarFloat(g_Cvar_VoteDuration))
 		{
 			LogError("Warning - Bonus Round Time shorter than Vote Time. Votes during bonus round may not have time to complete");
 		}
@@ -454,10 +456,7 @@ public Action:Command_ReloadMaps(client, args)
 
 public OnMapTimeLeftChanged()
 {
-	if (GetArraySize(g_MapList))
-	{
-		SetupTimeleftTimer();
-	}
+	SetupTimeleftTimer();
 }
 
 SetupTimeleftTimer()
@@ -512,7 +511,7 @@ public Action:Timer_StartMapVote(Handle:timer, Handle:data)
 	static timePassed;
 
 	// This is still necessary because InitiateVote still calls this directly via the retry timer
-	if (!GetArraySize(g_MapList) || !GetConVarBool(g_Cvar_EndOfMapVote) || g_MapVoteCompleted || g_HasVoteStarted)
+	if (!GetConVarBool(g_Cvar_EndOfMapVote) || g_MapVoteCompleted || g_HasVoteStarted)
 	{
 		g_WarningTimer = INVALID_HANDLE;
 		return Plugin_Stop;
@@ -598,7 +597,7 @@ public Event_TeamPlayWinPanel(Handle:event, const String:name[], bool:dontBroadc
 	{
 		g_TotalRounds++;
 		
-		if (!GetArraySize(g_MapList) || g_HasVoteStarted || g_MapVoteCompleted || !GetConVarBool(g_Cvar_EndOfMapVote))
+		if (g_HasVoteStarted || g_MapVoteCompleted || !GetConVarBool(g_Cvar_EndOfMapVote))
 		{
 			return;
 		}
@@ -658,7 +657,7 @@ public Event_RoundEnd(Handle:event, const String:name[], bool:dontBroadcast)
 	
 	g_winCount[winner]++;
 	
-	if (!GetArraySize(g_MapList) || g_HasVoteStarted || g_MapVoteCompleted)
+	if (g_HasVoteStarted || g_MapVoteCompleted)
 	{
 		return;
 	}
@@ -701,7 +700,7 @@ public CheckMaxRounds(roundcount)
 
 public Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroadcast)
 {
-	if (!GetArraySize(g_MapList) || g_Cvar_Fraglimit == INVALID_HANDLE || g_HasVoteStarted)
+	if (g_Cvar_Fraglimit == INVALID_HANDLE || g_HasVoteStarted)
 	{
 		return;
 	}
@@ -750,7 +749,8 @@ public Action:Command_Mapvote(client, args)
 InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 {
 	g_WaitingForVote = true;
-	
+	g_WarningInProgress = false;
+ 
 	// Check if a builtinvote is in progress first
 	// BuiltinVotes running at the same time as a regular vote can cause hintbox problems,
 	// so always check for a standard vote
@@ -818,12 +818,12 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 				g_BlockedSlots = true;
 				AddMenuItem(g_VoteMenu, LINE_ONE, "Choose something...", ITEMDRAW_DISABLED);
 				AddMenuItem(g_VoteMenu, LINE_TWO, "...will ya?", ITEMDRAW_DISABLED);
-				AddMenuItem(g_VoteMenu, LINE_SPACER, " ", ITEMDRAW_SPACER);
 			} else {
 				g_BlockedSlots = false;
 			}
 		}
 		
+		SetMenuOptionFlags(g_VoteMenu, MENUFLAG_BUTTON_NOVOTE);
 		SetMenuTitle(g_VoteMenu, "Vote Nextmap");
 		SetVoteResultCallback(g_VoteMenu, Handler_MapVoteFinished);
 	}
@@ -912,13 +912,18 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 		new count = 0;
 		new availableMaps = GetArraySize(g_NextMapList);
 		
-		if (availableMaps == 0)
+		if (i < voteSize && availableMaps == 0)
 		{
-			LogError("No maps available");
-		}
-		else if (availableMaps < voteSize)
-		{
-			voteSize = availableMaps;
+			if (i == 0)
+			{
+				LogError("No maps available for vote.");
+				return;
+			}
+			else
+			{
+				LogMessage("Not enough maps to fill map list, reducing map count. Adjust mce_include and mce_exclude to avoid this warning.");
+				voteSize = i;
+			}
 		}
 		
 		while (i < voteSize)
@@ -1064,7 +1069,6 @@ public Handler_MapVoteFinished(Handle:menu,
 		if (highest_votes == item_info[1][VOTEINFO_ITEM_VOTES])
 		{
 			g_HasVoteStarted = false;
-			g_WaitingForVote = true;
 			
 			//Revote is needed
 			new arraySize = ByteCountToCells(33);
@@ -1097,7 +1101,6 @@ public Handler_MapVoteFinished(Handle:menu,
 		else if (highest_votes < required_votes)
 		{
 			g_HasVoteStarted = false;
-			g_WaitingForVote = true;
 			
 			//Revote is needed
 			new arraySize = ByteCountToCells(33);
@@ -1192,7 +1195,6 @@ public Handler_MapVoteFinished(Handle:menu,
 		
 		// We extended, so we'll have to vote again.
 		g_HasVoteStarted = false;
-		CreateNextVote();
 		SetupTimeleftTimer();
 
 	}
@@ -1207,7 +1209,6 @@ public Handler_MapVoteFinished(Handle:menu,
 		LogAction(-1, -1, "Voting for next map has finished. 'No Change' was the winner");
 		
 		g_HasVoteStarted = false;
-		CreateNextVote();
 		SetupTimeleftTimer();
 	}
 	else
@@ -1300,12 +1301,12 @@ public Handler_MapVoteMenu(Handle:menu, MenuAction:action, param1, param2)
 			// Note that the first part is to discard the spacer line
 			else if (!StrEqual(map, LINE_SPACER, false))
 			{
-				if (mark == 1 && !IsMapOfficial(map))
+				if (mark == 1 && !InternalIsMapOfficial(map))
 				{
 					Format(buffer, sizeof(buffer), "%T", "Custom Marked", param1, map);
 					return RedrawMenuItem(buffer);
 				}
-				else if (mark == 2 && !IsMapOfficial(map))
+				else if (mark == 2 && !InternalIsMapOfficial(map))
 				{
 					Format(buffer, sizeof(buffer), "%T", "Custom", param1, map);
 					return RedrawMenuItem(buffer);
@@ -1740,8 +1741,12 @@ SetupRunoffTimer(MapChange:when, Handle:mapList)
 
 stock SetupWarningTimer(WarningType:type, MapChange:when=MapChange_MapEnd, Handle:mapList=INVALID_HANDLE)
 {
+	if (g_WarningInProgress && g_WarningTimer != INVALID_HANDLE)
+	{
+		KillTimer(g_WarningTimer);
+	}
 	// Load the map list from the file
-	if (ReadMapList(g_MapList,
+	else if (ReadMapList(g_MapList,
 			 g_mapFileSerial, 
 			 "mapchooser",
 			 MAPLIST_FLAG_CLEARARRAY|MAPLIST_FLAG_MAPSFOLDER)
@@ -1752,14 +1757,16 @@ stock SetupWarningTimer(WarningType:type, MapChange:when=MapChange_MapEnd, Handl
 			LogError("Unable to create a valid map list.");
 			return;
 		}
-	}
 
-	if (!GetArraySize(g_MapList) || (when == MapChange_MapEnd && !GetConVarBool(g_Cvar_EndOfMapVote)) || g_MapVoteCompleted || g_HasVoteStarted)
-	{
-		return;
-	}
+		CreateNextVote();
 
-	g_WaitingForVote = true;
+		if (!GetArraySize(g_MapList) || (when == MapChange_MapEnd && !GetConVarBool(g_Cvar_EndOfMapVote)) || g_MapVoteCompleted || g_HasVoteStarted)
+		{
+			return;
+		}
+	}
+	
+	g_WarningInProgress = true;
 	
 	decl Handle:forwardVote;
 	decl Handle:cvarTime;
@@ -1820,7 +1827,7 @@ stock InitializeOfficialMapList()
 
 stock bool:IsMapEndVoteAllowed()
 {
-	if (!GetArraySize(g_MapList) || !GetConVarBool(g_Cvar_EndOfMapVote) || g_MapVoteCompleted || g_HasVoteStarted)
+	if (!GetConVarBool(g_Cvar_EndOfMapVote) || g_MapVoteCompleted || g_HasVoteStarted)
 	{
 		return false;
 	}
@@ -1830,11 +1837,30 @@ stock bool:IsMapEndVoteAllowed()
 	}
 }
 
-stock bool:IsMapOfficial(const String:mapname[])
+public Native_IsMapOfficial(Handle:plugin, numParams)
+{
+	new mapLength;
+	GetNativeStringLength(1, mapLength);
+	
+	decl String:map[mapLength];
+	GetNativeString(1, map, mapLength);
+	
+	return InternalIsMapOfficial(map);
+}
+
+bool:InternalIsMapOfficial(const String:mapname[])
 {
 	new officialMapIndex = FindStringInArray(g_OfficialList, mapname);
 	return (officialMapIndex > -1);
 }
+
+public Native_IsWarningTimer(Handle:plugin, numParams)
+{
+	return g_WarningInProgress;
+}
+
+
+
 
 stock AddMapItem(const String:map[])
 {
@@ -1842,7 +1868,7 @@ stock AddMapItem(const String:map[])
 	{
 		new mark = GetConVarInt(g_Cvar_MarkCustomMaps);
 
-		if (mark > 0 && !IsMapOfficial(map))
+		if (mark > 0 && !InternalIsMapOfficial(map))
 		{
 			decl String:buffer[255];
 			switch(mark)

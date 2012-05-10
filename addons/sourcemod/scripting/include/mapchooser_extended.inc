@@ -31,6 +31,16 @@ forward OnMapVoteStart();
  */
 forward OnMapVoteEnd();
 
+/**
+ * Is a map on the current game's official list?
+ * This should be treated as informative only.
+ * 
+ * @param map 	Name of map to check
+ * @return 		true if it's on the list of official maps for this game
+ */
+native bool:IsMapOfficial(const String:map[]);
+
+
 public SharedPlugin:__pl_mapchooser_extended = 
 {
 	name = "mapchooser",
