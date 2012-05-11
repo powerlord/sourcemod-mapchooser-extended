@@ -41,15 +41,14 @@
 #undef REQUIRE_EXTENSIONS
 #include "include/builtinvotes"
 
-#define VERSION "1.9.0rc1"
-// Based on SourceMod Mapchooser 1.4.0
+// MCE 1.9.0
 
 public Plugin:myinfo =
 {
 	name = "MapChooser Extended",
 	author = "Powerlord, Zuko, and AlliedModders LLC",
 	description = "Automated Map Voting with Extensions",
-	version = VERSION,
+	version = MCE_VERSION,
 	url = "https://forums.alliedmods.net/showthread.php?p=1469346"
 };
 
@@ -196,7 +195,7 @@ public OnPluginStart()
 	g_Cvar_VoteDuration = CreateConVar("mce_voteduration", "20", "Specifies how long the mapvote should be available for.", _, true, 5.0);
 
 	// MapChooser Extended cvars
-	CreateConVar("mce_version", VERSION, "MapChooser Extended Version", FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_NOTIFY|FCVAR_DONTRECORD);
+	CreateConVar("mce_version", MCE_VERSION, "MapChooser Extended Version", FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_NOTIFY|FCVAR_DONTRECORD);
 
 	g_Cvar_RunOff = CreateConVar("mce_runoff", "1", "Hold run off votes if winning choice has less than a certain percentage of votes", _, true, 0.0, true, 1.0);
 	g_Cvar_RunOffPercent = CreateConVar("mce_runoffpercent", "50", "If winning choice has less than this percent of votes, hold a runoff", _, true, 0.0, true, 100.0);
@@ -219,7 +218,6 @@ public OnPluginStart()
 	
 	// Mapchooser Extended Commands
 	RegAdminCmd("mce_reload_maplist", Command_ReloadMaps, ADMFLAG_CHANGEMAP, "mce_reload_maplist - Reload the Official Maplist file.");
-	RegAdminCmd("mce_forcertv", ForceMapVote, ADMFLAG_CHANGEMAP, "mce_forcertv - Forces an rtv vote to start.  Different from sm_mapvote, as the server will change maps immediately when the vote is finished.");
 
 	g_Cvar_Winlimit = FindConVar("mp_winlimit");
 	g_Cvar_Maxrounds = FindConVar("mp_maxrounds");
@@ -301,6 +299,7 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 	
 	// MapChooser Extended natives
 	CreateNative("IsMapOfficial", Native_IsMapOfficial);
+	CreateNative("IsNominateAllowed", Native_IsNominateAllowed);
 
 	return APLRes_Success;
 }
@@ -1859,7 +1858,10 @@ public Native_IsWarningTimer(Handle:plugin, numParams)
 	return g_WarningInProgress;
 }
 
-
+public Native_IsNominateAllowed(Handle:plugin, numParams)
+{
+	return g_MapVoteCompleted ? false : (g_NominateCount < GetConVarInt(g_Cvar_IncludeMaps));
+}
 
 
 stock AddMapItem(const String:map[])
@@ -1942,13 +1944,4 @@ stock AddExtendToMenu(Handle:menu, MapChange:when)
 			AddMenuItem(menu, VOTE_EXTEND, "Extend Map");
 		}
 	}
-}
-
-
-public Action:ForceMapVote(client, args)
-{
-	ShowActivity2(client, "[MCE] ", "%t", "Initiated Vote Map");
-	SetupWarningTimer(WarningType_Vote, MapChange_Instant);
-	
-	return Plugin_Handled;
 }

@@ -34,18 +34,17 @@
 #include <sourcemod>
 #include <mapchooser>
 #include "include/mapchooser_extended"
-#define VERSION "1.9.0rc1"
-// Based on SourceMod Nominations 1.4.0
-
 
 #pragma semicolon 1
 
+// MCE 1.9.0
+
 public Plugin:myinfo =
 {
-	name = "Map Nominations",
-	author = "AlliedModders LLC",
+	name = "Map Nominations Extended",
+	author = "Powerlord and AlliedModders LLC",
 	description = "Provides Map Nominations",
-	version = VERSION,
+	version = MCE_VERSION,
 	url = "http://www.sourcemod.net/"
 };
 
@@ -86,17 +85,23 @@ public OnPluginStart()
 	
 	RegAdminCmd("sm_nominate_addmap", Command_Addmap, ADMFLAG_CHANGEMAP, "sm_nominate_addmap <mapname> - Forces a map to be on the next mapvote.");
 	
+	// Nominations Extended cvars
+	CreateConVar("ne_version", MCE_VERSION, "Nominations Extended Version", FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_NOTIFY|FCVAR_DONTRECORD);
+
+
 	g_mapTrie = CreateTrie();
 }
 
 public OnAllPluginsLoaded()
 {
-	// This is an MCE cvar... this plugin requires MCE to be loaded
+	// This is an MCE cvar... this plugin requires MCE to be loaded.  Granted, this plugin SHOULD have an MCE dependency.
 	g_Cvar_MarkCustomMaps = FindConVar("mce_markcustommaps");
 }
 
+/*
 public OnConfigsExecuted()
 {
+
 	if (ReadMapList(g_MapList,
 					g_mapFileSerial,
 					"nominations",
@@ -109,8 +114,9 @@ public OnConfigsExecuted()
 		}
 	}
 	
-	BuildMapMenu();
+	// BuildMapMenu();
 }
+*/
 
 public OnNominationRemoved(const String:map[], owner)
 {
@@ -194,6 +200,12 @@ public Action:Command_Say(client, args)
 	
 	if (strcmp(text[startidx], "nominate", false) == 0)
 	{
+		if (!IsNominateAllowed())
+		{
+			PrintToChat(client, "[SM] %t", "Max Nominations");
+			return Plugin_Handled;
+		}
+	
 		AttemptNominate(client);
 	}
 	
@@ -206,6 +218,12 @@ public Action:Command_Nominate(client, args)
 {
 	if (!client)
 	{
+		return Plugin_Handled;
+	}
+	
+	if (!IsNominateAllowed())
+	{
+		PrintToChat(client, "[SM] %t", "Max Nominations");
 		return Plugin_Handled;
 	}
 	
@@ -274,6 +292,7 @@ public Action:Command_Nominate(client, args)
 
 AttemptNominate(client)
 {
+	BuildMapMenu();
 	SetMenuTitle(g_MapMenu, "%t", "Nominate Title", client);
 	DisplayMenu(g_MapMenu, client, MENU_TIME_FOREVER);
 	
@@ -282,6 +301,18 @@ AttemptNominate(client)
 
 BuildMapMenu()
 {
+	if (ReadMapList(g_MapList,
+					g_mapFileSerial,
+					"nominations",
+					MAPLIST_FLAG_CLEARARRAY|MAPLIST_FLAG_MAPSFOLDER)
+		== INVALID_HANDLE)
+	{
+		if (g_mapFileSerial == -1)
+		{
+			SetFailState("Unable to create a valid map list.");
+		}
+	}
+	
 	if (g_MapMenu != INVALID_HANDLE)
 	{
 		CloseHandle(g_MapMenu);

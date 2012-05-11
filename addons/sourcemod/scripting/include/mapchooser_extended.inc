@@ -3,6 +3,9 @@
 #endif
 #define _mapchooser_extended_included_
 
+#define MCE_VERSION "1.9.0rc1"
+// Based on SourceMod Mapchooser 1.4.2
+
 /**
  * Called whenever warning timer starts
  * 
@@ -39,6 +42,13 @@ forward OnMapVoteEnd();
  * @return 		true if it's on the list of official maps for this game
  */
 native bool:IsMapOfficial(const String:map[]);
+
+/**
+ * Is nominate allowed?
+ * 
+ * @return		false if nomination list is full or if the vote already happened.
+ */
+native bool:IsNominateAllowed();
 
 
 public SharedPlugin:__pl_mapchooser_extended = 
