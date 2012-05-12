@@ -200,7 +200,7 @@ public OnPluginStart()
 	g_Cvar_RunOff = CreateConVar("mce_runoff", "1", "Hold run off votes if winning choice has less than a certain percentage of votes", _, true, 0.0, true, 1.0);
 	g_Cvar_RunOffPercent = CreateConVar("mce_runoffpercent", "50", "If winning choice has less than this percent of votes, hold a runoff", _, true, 0.0, true, 100.0);
 	g_Cvar_BlockSlots = CreateConVar("mce_blockslots", "1", "Block slots to prevent accidental votes.  Only applies when Voice Command style menus are in use.", _, true, 0.0, true, 1.0);
-	//g_Cvar_BlockSlotsCount = CreateConVar("mce_blockslots_count", "3", "Number of slots to block.", _, true, 1.0, true, 3.0);
+	//g_Cvar_BlockSlotsCount = CreateConVar("mce_blockslots_count", "2", "Number of slots to block.", _, true, 1.0, true, 3.0);
 	g_Cvar_MaxRunOffs = CreateConVar("mce_maxrunoffs", "1", "Number of run off votes allowed each map.", _, true, 0.0);
 	g_Cvar_StartTimePercent = CreateConVar("mce_start_percent", "35.0", "Specifies when to start the vote based on percents.", _, true, 0.0, true, 100.0);
 	g_Cvar_StartTimePercentEnable = CreateConVar("mce_start_percent_enable", "0", "Enable or Disable percentage calculations when to start vote.", _, true, 0.0, true, 1.0);
@@ -327,7 +327,6 @@ public OnLibraryRemoved(const String:name[])
 
 public OnConfigsExecuted()
 {
-	/*
 	if (ReadMapList(g_MapList,
 					 g_mapFileSerial, 
 					 "mapchooser",
@@ -340,7 +339,6 @@ public OnConfigsExecuted()
 			LogError("Unable to create a valid map list.");
 		}
 	}
-	*/
 	
 	// Disable the next level vote in TF2.
 	// This has two effects: 1. Stop the next level vote (which overlaps rtv functionality).
@@ -455,7 +453,10 @@ public Action:Command_ReloadMaps(client, args)
 
 public OnMapTimeLeftChanged()
 {
-	SetupTimeleftTimer();
+	if (GetArraySize(g_MapList))
+	{
+		SetupTimeleftTimer();
+	}
 }
 
 SetupTimeleftTimer()
@@ -510,7 +511,7 @@ public Action:Timer_StartMapVote(Handle:timer, Handle:data)
 	static timePassed;
 
 	// This is still necessary because InitiateVote still calls this directly via the retry timer
-	if (!GetConVarBool(g_Cvar_EndOfMapVote) || g_MapVoteCompleted || g_HasVoteStarted)
+	if (!GetArraySize(g_MapList) || !GetConVarBool(g_Cvar_EndOfMapVote) || g_MapVoteCompleted || g_HasVoteStarted)
 	{
 		g_WarningTimer = INVALID_HANDLE;
 		return Plugin_Stop;
@@ -596,7 +597,7 @@ public Event_TeamPlayWinPanel(Handle:event, const String:name[], bool:dontBroadc
 	{
 		g_TotalRounds++;
 		
-		if (g_HasVoteStarted || g_MapVoteCompleted || !GetConVarBool(g_Cvar_EndOfMapVote))
+		if (!GetArraySize(g_MapList) || g_HasVoteStarted || g_MapVoteCompleted || !GetConVarBool(g_Cvar_EndOfMapVote))
 		{
 			return;
 		}
@@ -641,7 +642,7 @@ public Event_RoundEnd(Handle:event, const String:name[], bool:dontBroadcast)
 	{
 		winner = GetEventInt(event, "winner");
 	}
-		
+	
 	if (winner == 0 || winner == 1 || !GetConVarBool(g_Cvar_EndOfMapVote))
 	{
 		return;
@@ -656,7 +657,7 @@ public Event_RoundEnd(Handle:event, const String:name[], bool:dontBroadcast)
 	
 	g_winCount[winner]++;
 	
-	if (g_HasVoteStarted || g_MapVoteCompleted)
+	if (!GetArraySize(g_MapList) || g_HasVoteStarted || g_MapVoteCompleted)
 	{
 		return;
 	}
@@ -699,7 +700,7 @@ public CheckMaxRounds(roundcount)
 
 public Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroadcast)
 {
-	if (g_Cvar_Fraglimit == INVALID_HANDLE || g_HasVoteStarted)
+	if (!GetArraySize(g_MapList) || g_Cvar_Fraglimit == INVALID_HANDLE || g_HasVoteStarted)
 	{
 		return;
 	}
@@ -775,6 +776,7 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 
 		WritePackCell(data, _:when);
 		WritePackCell(data, _:inputlist);
+		ResetPack(data);
 		return;
 	}
 	
@@ -1246,8 +1248,7 @@ public Handler_MapVoteFinished(Handle:menu,
 		
 		PrintToChatAll("[MCE] %t", "Nextmap Voting Finished", map, RoundToFloor(float(item_info[0][VOTEINFO_ITEM_VOTES])/float(num_votes)*100), num_votes);
 		LogAction(-1, -1, "Voting for next map has finished. Nextmap: %s.", map);
-	}
-
+	}	
 }
 
 public Handler_MapVoteMenu(Handle:menu, MenuAction:action, param1, param2)
@@ -1327,7 +1328,7 @@ public Handler_MapVoteMenu(Handle:menu, MenuAction:action, param1, param2)
 				{
 					if (g_BlockedSlots)
 					{
-						item = GetRandomInt(3, count - 1);
+						item = GetRandomInt(2, count - 1);
 					}
 					else
 					{
@@ -1838,11 +1839,16 @@ stock bool:IsMapEndVoteAllowed()
 
 public Native_IsMapOfficial(Handle:plugin, numParams)
 {
-	new mapLength;
-	GetNativeStringLength(1, mapLength);
+	new len;
+	GetNativeStringLength(1, len);
 	
-	decl String:map[mapLength];
-	GetNativeString(1, map, mapLength);
+	if (len <= 0)
+	{
+	  return false;
+	}
+	
+	new String:map[len+1];
+	GetNativeString(1, map, len+1);
 	
 	return InternalIsMapOfficial(map);
 }

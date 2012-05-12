@@ -98,10 +98,8 @@ public OnAllPluginsLoaded()
 	g_Cvar_MarkCustomMaps = FindConVar("mce_markcustommaps");
 }
 
-/*
 public OnConfigsExecuted()
 {
-
 	if (ReadMapList(g_MapList,
 					g_mapFileSerial,
 					"nominations",
@@ -114,9 +112,8 @@ public OnConfigsExecuted()
 		}
 	}
 	
-	// BuildMapMenu();
+	BuildMapMenu();
 }
-*/
 
 public OnNominationRemoved(const String:map[], owner)
 {
@@ -292,7 +289,6 @@ public Action:Command_Nominate(client, args)
 
 AttemptNominate(client)
 {
-	BuildMapMenu();
 	SetMenuTitle(g_MapMenu, "%t", "Nominate Title", client);
 	DisplayMenu(g_MapMenu, client, MENU_TIME_FOREVER);
 	
@@ -301,18 +297,6 @@ AttemptNominate(client)
 
 BuildMapMenu()
 {
-	if (ReadMapList(g_MapList,
-					g_mapFileSerial,
-					"nominations",
-					MAPLIST_FLAG_CLEARARRAY|MAPLIST_FLAG_MAPSFOLDER)
-		== INVALID_HANDLE)
-	{
-		if (g_mapFileSerial == -1)
-		{
-			SetFailState("Unable to create a valid map list.");
-		}
-	}
-	
 	if (g_MapMenu != INVALID_HANDLE)
 	{
 		CloseHandle(g_MapMenu);
@@ -455,10 +439,12 @@ public Handler_MapSelectMenu(Handle:menu, MenuAction:action, param1, param2)
 			if (mark)
 			{
 				official = IsMapOfficial(map);
+				LogError("For %s, official is %d", map, official);
 			}
 			
-			if (mark && official)
+			if (mark && !official)
 			{
+				LogError("Marking %s as type %d", map, mark);
 				switch (mark)
 				{
 					case 1:
@@ -498,7 +484,7 @@ public Handler_MapSelectMenu(Handle:menu, MenuAction:action, param1, param2)
 				}
 			}
 			
-			if (official)
+			if (mark && !official)
 				return RedrawMenuItem(buffer);
 			
 			return 0;
