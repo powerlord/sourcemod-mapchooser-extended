@@ -299,7 +299,7 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 	
 	// MapChooser Extended natives
 	CreateNative("IsMapOfficial", Native_IsMapOfficial);
-	CreateNative("IsNominateAllowed", Native_IsNominateAllowed);
+	CreateNative("CanNominate", Native_CanNominate);
 
 	return APLRes_Success;
 }
@@ -1858,9 +1858,24 @@ public Native_IsWarningTimer(Handle:plugin, numParams)
 	return g_WarningInProgress;
 }
 
-public Native_IsNominateAllowed(Handle:plugin, numParams)
+public Native_CanNominate(Handle:plugin, numParams)
 {
-	return g_MapVoteCompleted ? false : (g_NominateCount < GetConVarInt(g_Cvar_IncludeMaps));
+	if (g_HasVoteStarted)
+	{
+		return _:CanNominate_No_VoteInProgress;
+	}
+	
+	if (g_MapVoteCompleted)
+	{
+		return _:CanNominate_No_VoteComplete;
+	}
+	
+	if (g_NominateCount >= GetConVarInt(g_Cvar_IncludeMaps))
+	{
+		return _:CanNominate_No_VoteFull;
+	}
+	
+	return _:CanNominate_Yes;
 }
 
 

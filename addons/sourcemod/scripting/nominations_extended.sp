@@ -70,6 +70,7 @@ public OnPluginStart()
 {
 	LoadTranslations("common.phrases");
 	LoadTranslations("nominations.phrases");
+	LoadTranslations("basetriggers.phrases"); // for Next Map phrase
 	LoadTranslations("mapchooser_extended.phrases");
 	
 	new arraySize = ByteCountToCells(33);	
@@ -138,7 +139,7 @@ public Action:Command_Addmap(client, args)
 {
 	if (args < 1)
 	{
-		ReplyToCommand(client, "[SM] Usage: sm_nominate_addmap <mapname>");
+		ReplyToCommand(client, "[NE] Usage: sm_nominate_addmap <mapname>");
 		return Plugin_Handled;
 	}
 	
@@ -197,9 +198,8 @@ public Action:Command_Say(client, args)
 	
 	if (strcmp(text[startidx], "nominate", false) == 0)
 	{
-		if (!IsNominateAllowed())
+		if (!IsNominateAllowed(client))
 		{
-			PrintToChat(client, "[SM] %t", "Max Nominations");
 			return Plugin_Handled;
 		}
 	
@@ -218,9 +218,8 @@ public Action:Command_Nominate(client, args)
 		return Plugin_Handled;
 	}
 	
-	if (!IsNominateAllowed())
+	if (!IsNominateAllowed(client))
 	{
-		PrintToChat(client, "[SM] %t", "Max Nominations");
 		return Plugin_Handled;
 	}
 	
@@ -244,17 +243,17 @@ public Action:Command_Nominate(client, args)
 	{
 		if ((status & MAPSTATUS_EXCLUDE_CURRENT) == MAPSTATUS_EXCLUDE_CURRENT)
 		{
-			ReplyToCommand(client, "[SM] %t", "Can't Nominate Current Map");
+			ReplyToCommand(client, "[NE] %t", "Can't Nominate Current Map");
 		}
 		
 		if ((status & MAPSTATUS_EXCLUDE_PREVIOUS) == MAPSTATUS_EXCLUDE_PREVIOUS)
 		{
-			ReplyToCommand(client, "[SM] %t", "Map in Exclude List");
+			ReplyToCommand(client, "[NE] %t", "Map in Exclude List");
 		}
 		
 		if ((status & MAPSTATUS_EXCLUDE_NOMINATED) == MAPSTATUS_EXCLUDE_NOMINATED)
 		{
-			ReplyToCommand(client, "[SM] %t", "Map Already Nominated");
+			ReplyToCommand(client, "[NE] %t", "Map Already Nominated");
 		}
 		
 		return Plugin_Handled;
@@ -270,7 +269,7 @@ public Action:Command_Nominate(client, args)
 		}
 		else
 		{
-			ReplyToCommand(client, "[SM] %t", "Map Already Nominated");
+			ReplyToCommand(client, "[NE] %t", "Map Already Nominated");
 		}
 		
 		return Plugin_Handled;	
@@ -282,7 +281,7 @@ public Action:Command_Nominate(client, args)
 	
 	decl String:name[64];
 	GetClientName(client, name, sizeof(name));
-	PrintToChatAll("[SM] %t", "Map Nominated", name, mapname);
+	PrintToChatAll("[NE] %t", "Map Nominated", name, mapname);
 	
 	return Plugin_Continue;
 }
@@ -375,12 +374,12 @@ public Handler_MapSelectMenu(Handle:menu, MenuAction:action, param1, param2)
 			/* Don't need to check for InvalidMap because the menu did that already */
 			if (result == Nominate_AlreadyInVote)
 			{
-				PrintToChat(param1, "[SM] %t", "Map Already Nominated");
+				PrintToChat(param1, "[NE] %t", "Map Already Nominated");
 				return 0;
 			}
 			else if (result == Nominate_VoteFull)
 			{
-				PrintToChat(param1, "[SM] %t", "Max Nominations");
+				PrintToChat(param1, "[NE] %t", "Max Nominations");
 				return 0;
 			}
 			
@@ -388,11 +387,11 @@ public Handler_MapSelectMenu(Handle:menu, MenuAction:action, param1, param2)
 
 			if (result == Nominate_Replaced)
 			{
-				PrintToChatAll("[SM] %t", "Map Nomination Changed", name, map);
+				PrintToChatAll("[NE] %t", "Map Nomination Changed", name, map);
 				return 0;	
 			}
 			
-			PrintToChatAll("[SM] %t", "Map Nominated", name, map);
+			PrintToChatAll("[NE] %t", "Map Nominated", name, map);
 		}
 		
 		case MenuAction_DrawItem:
@@ -439,12 +438,10 @@ public Handler_MapSelectMenu(Handle:menu, MenuAction:action, param1, param2)
 			if (mark)
 			{
 				official = IsMapOfficial(map);
-				LogError("For %s, official is %d", map, official);
 			}
 			
 			if (mark && !official)
 			{
-				LogError("Marking %s as type %d", map, mark);
 				switch (mark)
 				{
 					case 1:
@@ -492,4 +489,34 @@ public Handler_MapSelectMenu(Handle:menu, MenuAction:action, param1, param2)
 	}
 	
 	return 0;
+}
+
+stock bool:IsNominateAllowed(client)
+{
+	new CanNominateResult:result = CanNominate();
+	
+	switch(result)
+	{
+		case CanNominate_No_VoteInProgress:
+		{
+			PrintToChat(client, "[ME] %t", "Nextmap Voting Started");
+			return false;
+		}
+		
+		case CanNominate_No_VoteComplete:
+		{
+			new String:map[65];
+			GetNextMap(map, sizeof(map));
+			PrintToChat(client, "[NE] %t", "Next Map", map);
+			return false;
+		}
+		
+		case CanNominate_No_VoteFull:
+		{
+			PrintToChat(client, "[ME] %t", "Max Nominations");
+			return false;
+		}
+	}
+	
+	return true;
 }

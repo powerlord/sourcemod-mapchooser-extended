@@ -3,8 +3,18 @@
 #endif
 #define _mapchooser_extended_included_
 
-#define MCE_VERSION "1.9.0rc1"
+#define MCE_VERSION "1.9.0"
 // Based on SourceMod Mapchooser 1.4.2
+
+
+enum CanNominateResult
+{
+	CanNominate_No_VoteFull,		/** No, nominations list is full */
+	CanNominate_No_VoteInProgress,	/** No, map vote is in progress */
+	CanNominate_No_VoteComplete,	/** No, map vote is completed */
+	CanNominate_Yes,				/** Yes, you can nominate */
+};
+
 
 /**
  * Called whenever warning timer starts
@@ -46,10 +56,9 @@ native bool:IsMapOfficial(const String:map[]);
 /**
  * Is nominate allowed?
  * 
- * @return		false if nomination list is full or if the vote already happened.
+ * @return		A CanNominateResult corresponding to whether a vote is allowed or not
  */
-native bool:IsNominateAllowed();
-
+native CanNominateResult:CanNominate();
 
 public SharedPlugin:__pl_mapchooser_extended = 
 {
