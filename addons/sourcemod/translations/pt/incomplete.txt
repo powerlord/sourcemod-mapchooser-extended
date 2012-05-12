@@ -1,2 +1,0 @@
-Missing "Runoff Vote Nextmap", "Number Of Votes", "Custom", "Revote Is Needed", "Revote Warning", "Vote Warning",
-"Line One", "Line Two", "Cannot Start Vote", and "Tie Vote"
