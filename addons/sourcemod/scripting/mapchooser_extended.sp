@@ -348,6 +348,7 @@ public OnConfigsExecuted()
 		SetConVarBool(g_Cvar_VoteNextLevel, false);
 	}
 	
+	CreateNextVote();
 	SetupTimeleftTimer();
 	
 	g_TotalRounds = 0;
@@ -1196,6 +1197,7 @@ public Handler_MapVoteFinished(Handle:menu,
 		
 		// We extended, so we'll have to vote again.
 		g_HasVoteStarted = false;
+		CreateNextVote();
 		SetupTimeleftTimer();
 
 	}
@@ -1210,6 +1212,7 @@ public Handler_MapVoteFinished(Handle:menu,
 		LogAction(-1, -1, "Voting for next map has finished. 'No Change' was the winner");
 		
 		g_HasVoteStarted = false;
+		CreateNextVote();
 		SetupTimeleftTimer();
 	}
 	else
@@ -1741,29 +1744,16 @@ SetupRunoffTimer(MapChange:when, Handle:mapList)
 
 stock SetupWarningTimer(WarningType:type, MapChange:when=MapChange_MapEnd, Handle:mapList=INVALID_HANDLE)
 {
+	if (!GetArraySize(g_MapList) || (when == MapChange_MapEnd && !GetConVarBool(g_Cvar_EndOfMapVote)) || g_MapVoteCompleted || g_HasVoteStarted)
+	{
+		return;
+	}
+	
+	new bool:interrupted = false;
 	if (g_WarningInProgress && g_WarningTimer != INVALID_HANDLE)
 	{
+		interrupted = true;
 		KillTimer(g_WarningTimer);
-	}
-	// Load the map list from the file
-	else if (ReadMapList(g_MapList,
-			 g_mapFileSerial, 
-			 "mapchooser",
-			 MAPLIST_FLAG_CLEARARRAY|MAPLIST_FLAG_MAPSFOLDER)
-	!= INVALID_HANDLE)
-	{
-		if (g_mapFileSerial == -1)
-		{
-			LogError("Unable to create a valid map list.");
-			return;
-		}
-
-		CreateNextVote();
-
-		if (!GetArraySize(g_MapList) || (when == MapChange_MapEnd && !GetConVarBool(g_Cvar_EndOfMapVote)) || g_MapVoteCompleted || g_HasVoteStarted)
-		{
-			return;
-		}
 	}
 	
 	g_WarningInProgress = true;
@@ -1791,8 +1781,11 @@ stock SetupWarningTimer(WarningType:type, MapChange:when=MapChange_MapEnd, Handl
 		}
 	}
 
-	Call_StartForward(forwardVote);
-	Call_Finish();
+	if (!interrupted)
+	{
+		Call_StartForward(forwardVote);
+		Call_Finish();
+	}
 
 	new Handle:data;
 	g_WarningTimer = CreateDataTimer(1.0, Timer_StartMapVote, data, TIMER_FLAG_NO_MAPCHANGE | TIMER_REPEAT);
@@ -1800,6 +1793,7 @@ stock SetupWarningTimer(WarningType:type, MapChange:when=MapChange_MapEnd, Handl
 	WritePackString(data, translationKey);
 	WritePackCell(data, _:when);
 	WritePackCell(data, _:mapList);
+	ResetPack(data);
 }
 
 stock InitializeOfficialMapList()
