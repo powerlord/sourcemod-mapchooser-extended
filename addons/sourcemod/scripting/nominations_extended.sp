@@ -200,7 +200,7 @@ public Action:Command_Say(client, args)
 	{
 		if (!IsNominateAllowed(client))
 		{
-			return Plugin_Handled;
+			return Plugin_Continue;
 		}
 	
 		AttemptNominate(client);

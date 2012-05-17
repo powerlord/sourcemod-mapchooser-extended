@@ -117,6 +117,7 @@ new Handle:g_Cvar_ExtendPosition = INVALID_HANDLE;
 new Handle:g_Cvar_MarkCustomMaps = INVALID_HANDLE;
 new Handle:g_Cvar_RandomizeNominations = INVALID_HANDLE;
 new Handle:g_Cvar_HideTimer = INVALID_HANDLE;
+new Handle:g_Cvar_NoVoteOption = INVALID_HANDLE;
 
 /* Mapchooser Extended Data Handles */
 new Handle:g_OfficialList = INVALID_HANDLE;
@@ -133,7 +134,8 @@ new g_RunoffCount = 0;
 new g_mapOfficialFileSerial = -1;
 new bool:g_BuiltinVotes = false;
 new String:g_GameModName[64];
-new bool:g_WarningInProgress;
+new bool:g_WarningInProgress = false;
+new bool:g_AddNoVote = false;
 
 /* Upper bound of how many team there could be */
 #define MAXTEAMS 10
@@ -212,6 +214,7 @@ public OnPluginStart()
 	g_Cvar_ExtendPosition = CreateConVar("mce_extendposition", "0", "Position of Extend/Don't Change options. 0 = at end, 1 = at start.", _, true, 0.0, true, 1.0);
 	g_Cvar_RandomizeNominations = CreateConVar("mce_randomizeorder", "0", "Randomize map order?", _, true, 0.0, true, 1.0);
 	g_Cvar_HideTimer = CreateConVar("mce_hidetimer", "0", "Hide the MapChooser Extended warning timer", _, true, 0.0, true, 1.0);
+	g_Cvar_NoVoteOption = CreateConVar("mce_addnovote", "1", "Add \"No Vote\" to vote menu?", _, true, 0.0, true, 1.0);
 
 	RegAdminCmd("sm_mapvote", Command_Mapvote, ADMFLAG_CHANGEMAP, "sm_mapvote - Forces MapChooser to attempt to run a map vote now.");
 	RegAdminCmd("sm_setnextmap", Command_SetNextmap, ADMFLAG_CHANGEMAP, "sm_setnextmap <map>");
@@ -810,6 +813,8 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 			g_VoteMenu = CreateMenu(Handler_MapVoteMenu, MenuAction_End | MenuAction_Display | MenuAction_DisplayItem | MenuAction_VoteCancel);
 		}
 
+		g_AddNoVote = GetConVarBool(g_Cvar_NoVoteOption);
+		
 		// Block Vote Slots
 		if (GetConVarBool(g_Cvar_BlockSlots))
 		{
@@ -820,12 +825,20 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 				g_BlockedSlots = true;
 				AddMenuItem(g_VoteMenu, LINE_ONE, "Choose something...", ITEMDRAW_DISABLED);
 				AddMenuItem(g_VoteMenu, LINE_TWO, "...will ya?", ITEMDRAW_DISABLED);
+				if (!g_AddNoVote)
+				{
+					AddMenuItem(g_VoteMenu, LINE_SPACER, "", ITEMDRAW_SPACER);
+				}
 			} else {
 				g_BlockedSlots = false;
 			}
 		}
 		
-		SetMenuOptionFlags(g_VoteMenu, MENUFLAG_BUTTON_NOVOTE);
+		if (g_AddNoVote)
+		{
+			SetMenuOptionFlags(g_VoteMenu, MENUFLAG_BUTTON_NOVOTE);
+		}
+		
 		SetMenuTitle(g_VoteMenu, "Vote Nextmap");
 		SetVoteResultCallback(g_VoteMenu, Handler_MapVoteFinished);
 	}
@@ -1329,14 +1342,19 @@ public Handler_MapVoteMenu(Handle:menu, MenuAction:action, param1, param2)
 				
 				do
 				{
+					new startInt = 0;
 					if (g_BlockedSlots)
 					{
-						item = GetRandomInt(2, count - 1);
+						if (g_AddNoVote)
+						{
+							startInt = 2;
+						}
+						else
+						{
+							startInt = 3;
+						}
 					}
-					else
-					{
-						item = GetRandomInt(0, count - 1);
-					}
+					item = GetRandomInt(startInt, count - 1);
 					GetMenuItem(menu, item, map, sizeof(map));
 				}
 				while (strcmp(map, VOTE_EXTEND, false) == 0);
