@@ -198,12 +198,10 @@ public Action:Command_Say(client, args)
 	
 	if (strcmp(text[startidx], "nominate", false) == 0)
 	{
-		if (!IsNominateAllowed(client))
+		if (IsNominateAllowed(client))
 		{
-			return Plugin_Continue;
+			AttemptNominate(client);
 		}
-	
-		AttemptNominate(client);
 	}
 	
 	SetCmdReplySource(old);
@@ -213,12 +211,7 @@ public Action:Command_Say(client, args)
 
 public Action:Command_Nominate(client, args)
 {
-	if (!client)
-	{
-		return Plugin_Handled;
-	}
-	
-	if (!IsNominateAllowed(client))
+	if (!client || !IsNominateAllowed(client))
 	{
 		return Plugin_Handled;
 	}
@@ -499,7 +492,7 @@ stock bool:IsNominateAllowed(client)
 	{
 		case CanNominate_No_VoteInProgress:
 		{
-			PrintToChat(client, "[ME] %t", "Nextmap Voting Started");
+			ReplyToCommand(client, "[ME] %t", "Nextmap Voting Started");
 			return false;
 		}
 		
@@ -507,13 +500,13 @@ stock bool:IsNominateAllowed(client)
 		{
 			new String:map[65];
 			GetNextMap(map, sizeof(map));
-			PrintToChat(client, "[NE] %t", "Next Map", map);
+			ReplyToCommand(client, "[NE] %t", "Next Map", map);
 			return false;
 		}
 		
 		case CanNominate_No_VoteFull:
 		{
-			PrintToChat(client, "[ME] %t", "Max Nominations");
+			ReplyToCommand(client, "[ME] %t", "Max Nominations");
 			return false;
 		}
 	}
