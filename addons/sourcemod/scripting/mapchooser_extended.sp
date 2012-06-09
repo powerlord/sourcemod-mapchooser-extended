@@ -41,7 +41,7 @@
 #undef REQUIRE_EXTENSIONS
 #include "include/builtinvotes"
 
-// MCE 1.9.0
+// MCE 1.9.2
 
 public Plugin:myinfo =
 {
@@ -507,7 +507,10 @@ public Action:Timer_StartWarningTimer(Handle:timer)
 {
 	g_VoteTimer = INVALID_HANDLE;
 	
-	SetupWarningTimer(WarningType_Vote);
+	if (!g_WarningInProgress || g_WarningTimer == INVALID_HANDLE)
+	{
+		SetupWarningTimer(WarningType_Vote);
+	}
 }
 
 public Action:Timer_StartMapVote(Handle:timer, Handle:data)
@@ -679,8 +682,11 @@ public CheckWinLimit(winner_score)
 		{			
 			if (winner_score >= (winlimit - GetConVarInt(g_Cvar_StartRounds)))
 			{
-				SetupWarningTimer(WarningType_Vote, MapChange_MapEnd);
-				//InitiateVote(MapChange_MapEnd, INVALID_HANDLE);
+				if (!g_WarningInProgress || g_WarningTimer == INVALID_HANDLE)
+				{
+					SetupWarningTimer(WarningType_Vote, MapChange_MapEnd);
+					//InitiateVote(MapChange_MapEnd, INVALID_HANDLE);
+				}
 			}
 		}
 	}
@@ -695,8 +701,11 @@ public CheckMaxRounds(roundcount)
 		{
 			if (roundcount >= (maxrounds - GetConVarInt(g_Cvar_StartRounds)))
 			{
-				SetupWarningTimer(WarningType_Vote, MapChange_MapEnd);
-				//InitiateVote(MapChange_MapEnd, INVALID_HANDLE);
+				if (!g_WarningInProgress || g_WarningTimer == INVALID_HANDLE)
+				{
+					SetupWarningTimer(WarningType_Vote, MapChange_MapEnd);
+					//InitiateVote(MapChange_MapEnd, INVALID_HANDLE);
+				}
 			}			
 		}
 	}
@@ -728,8 +737,11 @@ public Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroadcast)
 
 	if (GetClientFrags(fragger) >= (GetConVarInt(g_Cvar_Fraglimit) - GetConVarInt(g_Cvar_StartFrags)))
 	{
-		SetupWarningTimer(WarningType_Vote, MapChange_MapEnd);
-		//InitiateVote(MapChange_MapEnd, INVALID_HANDLE);
+		if (!g_WarningInProgress || g_WarningTimer == INVALID_HANDLE)
+		{
+			SetupWarningTimer(WarningType_Vote, MapChange_MapEnd);
+			//InitiateVote(MapChange_MapEnd, INVALID_HANDLE);
+		}
 	}
 }
 
