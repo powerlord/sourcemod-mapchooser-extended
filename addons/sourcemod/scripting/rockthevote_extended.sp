@@ -38,7 +38,7 @@
 
 #pragma semicolon 1
 
-// MCE 1.9.0
+// MCE 1.9.1
 
 public Plugin:myinfo =
 {

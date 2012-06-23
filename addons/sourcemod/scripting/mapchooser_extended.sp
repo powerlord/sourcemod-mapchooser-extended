@@ -41,7 +41,7 @@
 #undef REQUIRE_EXTENSIONS
 #include "include/builtinvotes"
 
-// MCE 1.9.3
+// MCE 1.9.2
 
 public Plugin:myinfo =
 {
@@ -1000,6 +1000,7 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 		}
 		
 		/* Wipe out our nominations list - Nominations have already been informed of this */
+		g_NominateCount = 0;
 		ClearArray(g_NominateOwners);
 		ClearArray(g_NominateList);
 
@@ -1222,7 +1223,6 @@ public Handler_MapVoteFinished(Handle:menu,
 		
 		// We extended, so we'll have to vote again.
 		g_HasVoteStarted = false;
-		g_MapVoteCompleted = false;
 		CreateNextVote();
 		SetupTimeleftTimer();
 
@@ -1238,8 +1238,6 @@ public Handler_MapVoteFinished(Handle:menu,
 		LogAction(-1, -1, "Voting for next map has finished. 'No Change' was the winner");
 		
 		g_HasVoteStarted = false;
-		g_MapVoteCompleted = false;
-
 		CreateNextVote();
 		SetupTimeleftTimer();
 	}
