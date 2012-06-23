@@ -41,7 +41,7 @@
 #undef REQUIRE_EXTENSIONS
 #include "include/builtinvotes"
 
-// MCE 1.9.2
+// MCE 1.9.3
 
 public Plugin:myinfo =
 {
@@ -1222,6 +1222,7 @@ public Handler_MapVoteFinished(Handle:menu,
 		
 		// We extended, so we'll have to vote again.
 		g_HasVoteStarted = false;
+		g_MapVoteCompleted = false;
 		CreateNextVote();
 		SetupTimeleftTimer();
 
@@ -1237,6 +1238,8 @@ public Handler_MapVoteFinished(Handle:menu,
 		LogAction(-1, -1, "Voting for next map has finished. 'No Change' was the winner");
 		
 		g_HasVoteStarted = false;
+		g_MapVoteCompleted = false;
+
 		CreateNextVote();
 		SetupTimeleftTimer();
 	}
