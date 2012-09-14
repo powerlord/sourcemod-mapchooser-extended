@@ -3,7 +3,7 @@
 #endif
 #define _mapchooser_extended_included_
 
-#define MCE_VERSION "1.9.3"
+#define MCE_VERSION "1.9.4"
 // Based on SourceMod Mapchooser 1.4.2
 
 

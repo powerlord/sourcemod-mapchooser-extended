@@ -41,7 +41,7 @@
 #undef REQUIRE_EXTENSIONS
 #include "include/builtinvotes"
 
-// MCE 1.9.2
+// MCE 1.9.4
 
 public Plugin:myinfo =
 {
@@ -57,6 +57,7 @@ new Handle:g_Cvar_Winlimit = INVALID_HANDLE;
 new Handle:g_Cvar_Maxrounds = INVALID_HANDLE;
 new Handle:g_Cvar_Fraglimit = INVALID_HANDLE;
 new Handle:g_Cvar_Bonusroundtime = INVALID_HANDLE;
+new Handle:g_Cvar_MatchClinch = INVALID_HANDLE;
 new Handle:g_Cvar_VoteNextLevel = INVALID_HANDLE;
 
 /* Plugin ConVars */
@@ -93,6 +94,7 @@ new bool:g_WaitingForVote;
 new bool:g_MapVoteCompleted;
 new bool:g_ChangeMapAtRoundEnd;
 new bool:g_ChangeMapInProgress;
+new bool:g_HasIntermissionStarted = false;
 new g_mapFileSerial = -1;
 
 new g_NominateCount = 0;
@@ -248,6 +250,12 @@ public OnPluginStart()
 		{
 			HookEvent("round_win", Event_RoundEnd);
 		}
+		else if (strcmp(folder, "csgo") == 0)
+		{
+			HookEvent("round_end", Event_RoundEnd);
+			HookEvent("cs_intermission", Event_Intermission);
+			HookEvent("announce_phase_end", Event_PhaseEnd);
+		}
 		else
 		{
 			HookEvent("round_end", Event_RoundEnd);
@@ -387,6 +395,7 @@ public OnMapEnd()
 	g_WaitingForVote = false;
 	g_ChangeMapAtRoundEnd = false;
 	g_ChangeMapInProgress = false;
+	g_HasIntermissionStarted = false;
 	
 	g_VoteTimer = INVALID_HANDLE;
 	g_RetryTimer = INVALID_HANDLE;
@@ -629,6 +638,26 @@ public Event_TeamPlayWinPanel(Handle:event, const String:name[], bool:dontBroadc
 		}
 	}
 }
+
+public Event_Intermission(Handle:event, const String:name[], bool:dontBroadcast)
+{
+	g_HasIntermissionStarted = true;
+}
+
+public Event_PhaseEnd(Handle:event, const String:name[], bool:dontBroadcast)
+{
+	/* announce_phase_end fires for both half time and the end of the map, but intermission fires first for end of the map. */
+	if (g_HasIntermissionStarted)
+	{
+		return;
+	}
+
+	/* No intermission yet, so this must be half time. Swap the score counters. */
+	new t_score = g_winCount[2];
+	g_winCount[2] =  g_winCount[3];
+	g_winCount[3] = t_score;
+}
+ 
 /* You ask, why don't you just use team_score event? And I answer... Because CSS doesn't. */
 public Event_RoundEnd(Handle:event, const String:name[], bool:dontBroadcast)
 {
@@ -687,6 +716,22 @@ public CheckWinLimit(winner_score)
 					SetupWarningTimer(WarningType_Vote, MapChange_MapEnd);
 					//InitiateVote(MapChange_MapEnd, INVALID_HANDLE);
 				}
+			}
+		}
+	}
+	
+	if (g_Cvar_MatchClinch != INVALID_HANDLE && g_Cvar_Maxrounds != INVALID_HANDLE)
+	{
+		new clinch = GetConVarInt(g_Cvar_MatchClinch);
+		
+		if (clinch)
+		{
+			new maxrounds = GetConVarInt(g_Cvar_Maxrounds);
+			new winlimit = maxrounds / 2;
+			
+			if(winner_score > (winlimit - GetConVarInt(g_Cvar_StartRounds)))
+			{
+				InitiateVote(MapChange_MapEnd, INVALID_HANDLE);
 			}
 		}
 	}
