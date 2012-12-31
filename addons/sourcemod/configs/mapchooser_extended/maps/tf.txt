@@ -52,3 +52,8 @@ koth_viaduct_event
 cp_foundry
 sd_doomsday
 koth_king
+mvm_mannworks
+mvm_coaltown
+mvm_decoy
+koth_lakeside_event
+mvm_bigrock
