@@ -732,7 +732,11 @@ public CheckWinLimit(winner_score)
 			
 			if(winner_score > (winlimit - GetConVarInt(g_Cvar_StartRounds)))
 			{
-				InitiateVote(MapChange_MapEnd, INVALID_HANDLE);
+				if (!g_WarningInProgress || g_WarningTimer == INVALID_HANDLE)
+				{
+					SetupWarningTimer(WarningType_Vote, MapChange_MapEnd);
+					//InitiateVote(MapChange_MapEnd, INVALID_HANDLE);
+				}
 			}
 		}
 	}
@@ -752,7 +756,7 @@ public CheckMaxRounds(roundcount)
 					SetupWarningTimer(WarningType_Vote, MapChange_MapEnd);
 					//InitiateVote(MapChange_MapEnd, INVALID_HANDLE);
 				}
-			}			
+			}
 		}
 	}
 }
