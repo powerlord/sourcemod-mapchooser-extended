@@ -1,10 +1,11 @@
 /**
  * vim: set ts=4 :
  * =============================================================================
- * SourceMod Rock The Vote Plugin
- * Creates a map vote when the required number of players have requested one.
+ * Nominations Extended
+ * Allows players to nominate maps for Mapchooser
  *
- * SourceMod (C)2004-2008 AlliedModders LLC.  All rights reserved.
+ * Nominations Extended (C)2012-2013 Powerlord (Ross Bemrose)
+ * SourceMod (C)2004-2007 AlliedModders LLC.  All rights reserved.
  * =============================================================================
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -37,7 +38,10 @@
 
 #pragma semicolon 1
 
-// MCE 1.9.0
+#define MCE_VERSION "1.9.4"
+
+/* Map name size bumped up to support longer map names */
+#define MAP_NAME_LENGTH 65
 
 public Plugin:myinfo =
 {
@@ -45,7 +49,7 @@ public Plugin:myinfo =
 	author = "Powerlord and AlliedModders LLC",
 	description = "Provides Map Nominations",
 	version = MCE_VERSION,
-	url = "http://www.sourcemod.net/"
+	url = "https://forums.alliedmods.net/showthread.php?t=156974"
 };
 
 new Handle:g_Cvar_ExcludeOld = INVALID_HANDLE;
@@ -73,7 +77,7 @@ public OnPluginStart()
 	LoadTranslations("basetriggers.phrases"); // for Next Map phrase
 	LoadTranslations("mapchooser_extended.phrases");
 	
-	new arraySize = ByteCountToCells(33);	
+	new arraySize = ByteCountToCells(MAP_NAME_LENGTH);	
 	g_MapList = CreateArray(arraySize);
 	
 	g_Cvar_ExcludeOld = CreateConVar("sm_nominate_excludeold", "1", "Specifies if the current map should be excluded from the Nominations list", 0, true, 0.00, true, 1.0);
@@ -143,7 +147,7 @@ public Action:Command_Addmap(client, args)
 		return Plugin_Handled;
 	}
 	
-	decl String:mapname[64];
+	decl String:mapname[MAP_NAME_LENGTH];
 	GetCmdArg(1, mapname, sizeof(mapname));
 
 	
@@ -222,7 +226,7 @@ public Action:Command_Nominate(client, args)
 		return Plugin_Handled;
 	}
 	
-	decl String:mapname[64];
+	decl String:mapname[MAP_NAME_LENGTH];
 	GetCmdArg(1, mapname, sizeof(mapname));
 	
 	new status;
@@ -272,7 +276,7 @@ public Action:Command_Nominate(client, args)
 	
 	SetTrieValue(g_mapTrie, mapname, MAPSTATUS_DISABLED|MAPSTATUS_EXCLUDE_NOMINATED);
 	
-	decl String:name[64];
+	decl String:name[MAX_NAME_LENGTH];
 	GetClientName(client, name, sizeof(name));
 	PrintToChatAll("[NE] %t", "Map Nominated", name, mapname);
 	
@@ -299,14 +303,14 @@ BuildMapMenu()
 	
 	g_MapMenu = CreateMenu(Handler_MapSelectMenu, MENU_ACTIONS_DEFAULT|MenuAction_DrawItem|MenuAction_DisplayItem);
 
-	decl String:map[64];
+	decl String:map[MAP_NAME_LENGTH];
 	
 	new Handle:excludeMaps = INVALID_HANDLE;
 	decl String:currentMap[32];
 	
 	if (GetConVarBool(g_Cvar_ExcludeOld))
 	{	
-		excludeMaps = CreateArray(ByteCountToCells(33));
+		excludeMaps = CreateArray(ByteCountToCells(MAP_NAME_LENGTH));
 		GetExcludeMapList(excludeMaps);
 	}
 	
@@ -357,10 +361,10 @@ public Handler_MapSelectMenu(Handle:menu, MenuAction:action, param1, param2)
 	{
 		case MenuAction_Select:
 		{
-			decl String:map[64], String:name[64];
+			decl String:map[MAP_NAME_LENGTH], String:name[MAX_NAME_LENGTH];
 			GetMenuItem(menu, param2, map, sizeof(map));		
 			
-			GetClientName(param1, name, 64);
+			GetClientName(param1, name, MAX_NAME_LENGTH);
 	
 			new NominateResult:result = NominateMap(map, false, param1);
 			
@@ -389,7 +393,7 @@ public Handler_MapSelectMenu(Handle:menu, MenuAction:action, param1, param2)
 		
 		case MenuAction_DrawItem:
 		{
-			decl String:map[64];
+			decl String:map[MAP_NAME_LENGTH];
 			GetMenuItem(menu, param2, map, sizeof(map));
 			
 			new status;
@@ -411,7 +415,7 @@ public Handler_MapSelectMenu(Handle:menu, MenuAction:action, param1, param2)
 		
 		case MenuAction_DisplayItem:
 		{
-			decl String:map[64];
+			decl String:map[MAP_NAME_LENGTH];
 			GetMenuItem(menu, param2, map, sizeof(map));
 			
 			new mark = GetConVarInt(g_Cvar_MarkCustomMaps);
@@ -498,7 +502,7 @@ stock bool:IsNominateAllowed(client)
 		
 		case CanNominate_No_VoteComplete:
 		{
-			new String:map[65];
+			new String:map[MAP_NAME_LENGTH];
 			GetNextMap(map, sizeof(map));
 			ReplyToCommand(client, "[NE] %t", "Next Map", map);
 			return false;

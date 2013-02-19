@@ -1,10 +1,11 @@
 /**
  * vim: set ts=4 :
  * =============================================================================
- * SourceMod Mapchooser Plugin
+ * MapChooser Extended
  * Creates a map vote at appropriate times, setting sm_nextmap to the winning
- * vote
+ * vote.  Includes extra options not present in the SourceMod MapChooser
  *
+ * MapChooser Extended (C)2011-2013 Powerlord (Ross Bemrose)
  * SourceMod (C)2004-2007 AlliedModders LLC.  All rights reserved.
  * =============================================================================
  *
@@ -41,7 +42,7 @@
 #undef REQUIRE_EXTENSIONS
 #include "include/builtinvotes"
 
-// MCE 1.9.4
+#define MCE_VERSION "1.9.4"
 
 public Plugin:myinfo =
 {
@@ -49,7 +50,7 @@ public Plugin:myinfo =
 	author = "Powerlord, Zuko, and AlliedModders LLC",
 	description = "Automated Map Voting with Extensions",
 	version = MCE_VERSION,
-	url = "https://forums.alliedmods.net/showthread.php?p=1469346"
+	url = "https://forums.alliedmods.net/showthread.php?t=156974"
 };
 
 /* Valve ConVars */
@@ -167,13 +168,16 @@ enum WarningType
 #define LINE_SPACER "##linespacer##"
 #define FAILURE_TIMER_LENGTH 5
 
+/* Map name size bumped up to support longer map names */
+#define MAP_NAME_LENGTH 65
+
 public OnPluginStart()
 {
 	LoadTranslations("mapchooser_extended.phrases");
 	LoadTranslations("basevotes.phrases");
 	LoadTranslations("common.phrases");
 	
-	new arraySize = ByteCountToCells(33);
+	new arraySize = ByteCountToCells(MAP_NAME_LENGTH);
 	g_MapList = CreateArray(arraySize);
 	g_NominateList = CreateArray(arraySize);
 	g_NominateOwners = CreateArray(1);
@@ -422,7 +426,7 @@ public OnClientDisconnect(client)
 		return;
 	}
 	
-	new String:oldmap[33];
+	new String:oldmap[MAP_NAME_LENGTH];
 	GetArrayString(g_NominateList, index, oldmap, sizeof(oldmap));
 	Call_StartForward(g_NominationsResetForward);
 	Call_PushString(oldmap);
@@ -442,7 +446,7 @@ public Action:Command_SetNextmap(client, args)
 		return Plugin_Handled;
 	}
 
-	decl String:map[64];
+	decl String:map[MAP_NAME_LENGTH];
 	GetCmdArg(1, map, sizeof(map));
 
 	if (!IsMapValid(map))
@@ -1149,7 +1153,7 @@ public Handler_MapVoteFinished(Handle:menu,
 			g_HasVoteStarted = false;
 			
 			//Revote is needed
-			new arraySize = ByteCountToCells(33);
+			new arraySize = ByteCountToCells(MAP_NAME_LENGTH);
 			new Handle:mapList = CreateArray(arraySize);
 
 			for (new i = 0; i < num_items; i++)
@@ -1181,7 +1185,7 @@ public Handler_MapVoteFinished(Handle:menu,
 			g_HasVoteStarted = false;
 			
 			//Revote is needed
-			new arraySize = ByteCountToCells(33);
+			new arraySize = ByteCountToCells(MAP_NAME_LENGTH);
 			new Handle:mapList = CreateArray(arraySize);
 
 			decl String:map1[32];
@@ -1351,7 +1355,7 @@ public Handler_MapVoteMenu(Handle:menu, MenuAction:action, param1, param2)
 		
 		case MenuAction_DisplayItem:
 		{
-			decl String:map[64], String:buffer[255];
+			decl String:map[MAP_NAME_LENGTH], String:buffer[255];
 			new mark = GetConVarInt(g_Cvar_MarkCustomMaps);
 			
 			GetMenuItem(menu, param2, map, sizeof(map));
@@ -1490,7 +1494,7 @@ public Action:Timer_ChangeMap(Handle:hTimer, Handle:dp)
 {
 	g_ChangeMapInProgress = false;
 	
-	new String:map[65];
+	new String:map[MAP_NAME_LENGTH];
 	
 	if (dp == INVALID_HANDLE)
 	{
@@ -1575,7 +1579,7 @@ NominateResult:InternalNominateMap(String:map[], bool:force, owner)
 	/* Look to replace an existing nomination by this client - Nominations made with owner = 0 aren't replaced */
 	if (owner && ((index = FindValueInArray(g_NominateOwners, owner)) != -1))
 	{
-		new String:oldmap[33];
+		new String:oldmap[MAP_NAME_LENGTH];
 		GetArrayString(g_NominateList, index, oldmap, sizeof(oldmap));
 		Call_StartForward(g_NominationsResetForward);
 		Call_PushString(oldmap);
@@ -1605,7 +1609,7 @@ NominateResult:InternalNominateMap(String:map[], bool:force, owner)
 	
 	while (GetArraySize(g_NominateList) > GetConVarInt(g_Cvar_IncludeMaps))
 	{
-		new String:oldmap[33];
+		new String:oldmap[MAP_NAME_LENGTH];
 		GetArrayString(g_NominateList, 0, oldmap, sizeof(oldmap));
 		Call_StartForward(g_NominationsResetForward);
 		Call_PushString(oldmap);
@@ -1642,7 +1646,7 @@ bool:InternalRemoveNominationByMap(String:map[])
 {	
 	for (new i = 0; i < GetArraySize(g_NominateList); i++)
 	{
-		new String:oldmap[33];
+		new String:oldmap[MAP_NAME_LENGTH];
 		GetArrayString(g_NominateList, i, oldmap, sizeof(oldmap));
 
 		if(strcmp(map, oldmap, false) == 0)
@@ -1686,7 +1690,7 @@ bool:InternalRemoveNominationByOwner(owner)
 
 	if (owner && ((index = FindValueInArray(g_NominateOwners, owner)) != -1))
 	{
-		new String:oldmap[33];
+		new String:oldmap[MAP_NAME_LENGTH];
 		GetArrayString(g_NominateList, index, oldmap, sizeof(oldmap));
 
 		Call_StartForward(g_NominationsResetForward);
@@ -1746,7 +1750,7 @@ public Native_GetExcludeMapList(Handle:plugin, numParams)
 		return;	
 	}
 	new size = GetArraySize(g_OldMapList);
-	decl String:map[33];
+	decl String:map[MAP_NAME_LENGTH];
 	
 	for (new i=0; i<size; i++)
 	{
@@ -1765,7 +1769,7 @@ public Native_GetNominatedMapList(Handle:plugin, numParams)
 	if (maparray == INVALID_HANDLE)
 		return;
 
-	decl String:map[33];
+	decl String:map[MAP_NAME_LENGTH];
 
 	for (new i = 0; i < GetArraySize(g_NominateList); i++)
 	{

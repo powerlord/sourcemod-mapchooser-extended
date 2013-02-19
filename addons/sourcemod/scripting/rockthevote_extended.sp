@@ -1,10 +1,11 @@
 /**
  * vim: set ts=4 :
  * =============================================================================
- * SourceMod Rock The Vote Plugin
+ * Rock The Vote Extended
  * Creates a map vote when the required number of players have requested one.
  *
- * SourceMod (C)2004-2008 AlliedModders LLC.  All rights reserved.
+ * Rock The Vote Extended (C)2012-2013 Powerlord (Ross Bemrose)
+ * SourceMod (C)2004-2007 AlliedModders LLC.  All rights reserved.
  * =============================================================================
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -38,7 +39,10 @@
 
 #pragma semicolon 1
 
-// MCE 1.9.1
+#define MCE_VERSION "1.9.4"
+
+/* Map name size bumped up to support longer map names */
+#define MAP_NAME_LENGTH 65
 
 public Plugin:myinfo =
 {
@@ -46,7 +50,7 @@ public Plugin:myinfo =
 	author = "Powerlord and AlliedModders LLC",
 	description = "Provides RTV Map Voting",
 	version = MCE_VERSION,
-	url = "http://www.sourcemod.net/"
+	url = "https://forums.alliedmods.net/showthread.php?t=156974"
 };
 
 new Handle:g_Cvar_Needed = INVALID_HANDLE;
@@ -238,7 +242,7 @@ AttemptRTV(client)
 		return;
 	}	
 	
-	new String:name[64];
+	new String:name[MAX_NAME_LENGTH];
 	GetClientName(client, name, sizeof(name));
 	
 	g_Votes++;
@@ -267,7 +271,7 @@ StartRTV()
 	if (EndOfMapVoteEnabled() && HasEndOfMapVoteFinished())
 	{
 		/* Change right now then */
-		new String:map[65];
+		new String:map[MAP_NAME_LENGTH];
 		if (GetNextMap(map, sizeof(map)))
 		{
 			PrintToChatAll("[SM] %t", "Changing Maps", map);
@@ -309,7 +313,7 @@ public Action:Timer_ChangeMap(Handle:hTimer)
 	
 	LogMessage("RTV changing map manually");
 	
-	new String:map[65];
+	new String:map[MAP_NAME_LENGTH];
 	if (GetNextMap(map, sizeof(map)))
 	{	
 		ForceChangeLevel(map, "RTV after mapvote");
