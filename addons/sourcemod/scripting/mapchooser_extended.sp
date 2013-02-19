@@ -227,6 +227,7 @@ public OnPluginStart()
 	g_Cvar_Winlimit = FindConVar("mp_winlimit");
 	g_Cvar_Maxrounds = FindConVar("mp_maxrounds");
 	g_Cvar_Fraglimit = FindConVar("mp_fraglimit");
+	g_Cvar_MatchClinch = FindConVar("mp_match_can_clinch");
 	
 	// DoD:S uses a different cvar name for bonus round time
 	g_Cvar_Bonusroundtime = FindConVar("dod_bonusroundtime");
