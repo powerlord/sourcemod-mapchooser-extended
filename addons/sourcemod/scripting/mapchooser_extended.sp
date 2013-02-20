@@ -39,10 +39,16 @@
 #include "include/mapchooser_extended"
 #include <nextmap>
 
-#undef REQUIRE_EXTENSIONS
-#include "include/builtinvotes"
+#undef REQUIRE_PLUGIN
+#include <nativevotes>
 
-#define MCE_VERSION "1.9.4"
+#undef REQUIRE_EXTENSIONS
+#include <builtinvotes>
+
+#define MCE_VERSION "1.9.5"
+
+#define BV "builtinvotes"
+#define NV "nativevotes"
 
 public Plugin:myinfo =
 {
@@ -136,6 +142,7 @@ new Handle:g_MapVoteRunoffStartForward = INVALID_HANDLE;
 new g_RunoffCount = 0;
 new g_mapOfficialFileSerial = -1;
 new bool:g_BuiltinVotes = false;
+new bool:g_NativeVotes = false;
 new String:g_GameModName[64];
 new bool:g_WarningInProgress = false;
 new bool:g_AddNoVote = false;
@@ -322,20 +329,32 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 
 public OnAllPluginsLoaded()
 {
-	g_BuiltinVotes = LibraryExists("builtinvotes") && StrEqual(g_GameModName, "tf");
+	g_NativeVotes = LibraryExists(NV);
+	g_BuiltinVotes = LibraryExists(BV) && StrEqual(g_GameModName, "tf");
 }
 
 public OnLibraryAdded(const String:name[])
 {
-	if (StrEqual(name, "builtinvotes") && StrEqual(g_GameModName, "tf"))
+	if (StrEqual(name, NV))
+	{
+		g_NativeVotes = true;
+	}
+	
+	if (StrEqual(name, BV) && StrEqual(g_GameModName, "tf"))
 	{
 		g_BuiltinVotes = true;
 	}
+	
 }
 
 public OnLibraryRemoved(const String:name[])
 {
-	if (StrEqual(name, "builtinvotes"))
+	if (StrEqual(name, NV))
+	{
+		g_NativeVotes = false;
+	}
+	
+	if (StrEqual(name, BV))
 	{
 		g_BuiltinVotes = false;
 	}
@@ -407,8 +426,8 @@ public OnMapEnd()
 	g_WarningTimer = INVALID_HANDLE;
 	g_RunoffCount = 0;
 	
-	decl String:map[32];
-	GetCurrentMap(map, sizeof(map));
+	decl String:map[MAP_NAME_LENGTH];
+	GetCurrentMap(map, MAP_NAME_LENGTH);
 	PushArrayString(g_OldMapList, map);
 				
 	if (GetArraySize(g_OldMapList) > GetConVarInt(g_Cvar_ExcludeMaps))
@@ -427,7 +446,7 @@ public OnClientDisconnect(client)
 	}
 	
 	new String:oldmap[MAP_NAME_LENGTH];
-	GetArrayString(g_NominateList, index, oldmap, sizeof(oldmap));
+	GetArrayString(g_NominateList, index, oldmap, MAP_NAME_LENGTH);
 	Call_StartForward(g_NominationsResetForward);
 	Call_PushString(oldmap);
 	Call_PushCell(GetArrayCell(g_NominateOwners, index));
@@ -447,7 +466,7 @@ public Action:Command_SetNextmap(client, args)
 	}
 
 	decl String:map[MAP_NAME_LENGTH];
-	GetCmdArg(1, map, sizeof(map));
+	GetCmdArg(1, map, MAP_NAME_LENGTH);
 
 	if (!IsMapValid(map))
 	{
@@ -824,7 +843,7 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 	// Check if a builtinvote is in progress first
 	// BuiltinVotes running at the same time as a regular vote can cause hintbox problems,
 	// so always check for a standard vote
-	if (IsVoteInProgress() || (g_BuiltinVotes && IsBuiltinVoteInProgress() ))
+	if (IsVoteInProgress() || (g_BuiltinVotes && IsBuiltinVoteInProgress()) || (g_NativeVotes) )
 	{
 		// Can't start a vote, try again in 5 seconds.
 		//g_RetryTimer = CreateTimer(5.0, Timer_StartMapVote, _, TIMER_FLAG_NO_MAPCHANGE);
@@ -920,7 +939,7 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 	 * like sm_mapvote from the adminmenu in the future.
 	 */
 	 
-	decl String:map[32];
+	decl String:map[MAP_NAME_LENGTH];
 	
 	/* No input given - User our internal nominations and maplist */
 	if (inputlist == INVALID_HANDLE)
@@ -961,7 +980,7 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 		
 		for (new i=0; i<nominationsToAdd; i++)
 		{
-			GetArrayString(g_NominateList, i, map, sizeof(map));
+			GetArrayString(g_NominateList, i, map, MAP_NAME_LENGTH);
 			
 			if (randomizeList == INVALID_HANDLE)
 			{
@@ -978,7 +997,7 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 		/* Clear out the rest of the nominations array */
 		for (new i=nominationsToAdd; i<nominateCount; i++)
 		{
-			GetArrayString(g_NominateList, i, map, sizeof(map));
+			GetArrayString(g_NominateList, i, map, MAP_NAME_LENGTH);
 			
 			/* Notify Nominations that this map is now free */
 			Call_StartForward(g_NominationsResetForward);
@@ -1009,7 +1028,7 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 		
 		while (i < voteSize)
 		{
-			GetArrayString(g_NextMapList, count, map, sizeof(map));
+			GetArrayString(g_NextMapList, count, map, MAP_NAME_LENGTH);
 			count++;
 			
 			//Check if this map is in the nominate list (and thus already in the vote) */
@@ -1045,7 +1064,7 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 			
 			for (new j = 0; j < GetArraySize(randomizeList); j++)
 			{
-				GetArrayString(randomizeList, j, map, sizeof(map));
+				GetArrayString(randomizeList, j, map, MAP_NAME_LENGTH);
 				AddMapItem(map);
 			}
 			
@@ -1069,7 +1088,7 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 		
 		for (new i=0; i<size; i++)
 		{
-			GetArrayString(inputlist, i, map, sizeof(map));
+			GetArrayString(inputlist, i, map, MAP_NAME_LENGTH);
 			
 			if (IsMapValid(map))
 			{
@@ -1160,9 +1179,9 @@ public Handler_MapVoteFinished(Handle:menu,
 			{
 				if (item_info[i][VOTEINFO_ITEM_VOTES] == highest_votes)
 				{
-					decl String:map[32];
+					decl String:map[MAP_NAME_LENGTH];
 					
-					GetMapItem(menu, item_info[i][VOTEINFO_ITEM_INDEX], map, sizeof(map));
+					GetMapItem(menu, item_info[i][VOTEINFO_ITEM_INDEX], map, MAP_NAME_LENGTH);
 					PushArrayString(mapList, map);
 				}
 				else
@@ -1188,8 +1207,8 @@ public Handler_MapVoteFinished(Handle:menu,
 			new arraySize = ByteCountToCells(MAP_NAME_LENGTH);
 			new Handle:mapList = CreateArray(arraySize);
 
-			decl String:map1[32];
-			GetMapItem(menu, item_info[0][VOTEINFO_ITEM_INDEX], map1, sizeof(map1));
+			decl String:map1[MAP_NAME_LENGTH];
+			GetMapItem(menu, item_info[0][VOTEINFO_ITEM_INDEX], map1, MAP_NAME_LENGTH);
 
 			PushArrayString(mapList, map1);
 
@@ -1198,8 +1217,8 @@ public Handler_MapVoteFinished(Handle:menu,
 			{
 				if (GetArraySize(mapList) < 2 || item_info[i][VOTEINFO_ITEM_VOTES] == item_info[i - 1][VOTEINFO_ITEM_VOTES])
 				{
-					decl String:map[32];
-					GetMapItem(menu, item_info[i][VOTEINFO_ITEM_INDEX], map, sizeof(map));
+					decl String:map[MAP_NAME_LENGTH];
+					GetMapItem(menu, item_info[i][VOTEINFO_ITEM_INDEX], map, MAP_NAME_LENGTH);
 					PushArrayString(mapList, map);
 				}
 				else
@@ -1224,8 +1243,8 @@ public Handler_MapVoteFinished(Handle:menu,
 	Call_StartForward(g_MapVoteEndForward);
 	Call_Finish();
 
-	decl String:map[32];
-	GetMapItem(menu, item_info[0][VOTEINFO_ITEM_INDEX], map, sizeof(map));
+	decl String:map[MAP_NAME_LENGTH];
+	GetMapItem(menu, item_info[0][VOTEINFO_ITEM_INDEX], map, MAP_NAME_LENGTH);
 
 	if ((strcmp(map, VOTE_EXTEND, false) == 0) || (strcmp(map, BUILTINVOTES_EXTEND, false) == 0))
 	{
@@ -1358,7 +1377,7 @@ public Handler_MapVoteMenu(Handle:menu, MenuAction:action, param1, param2)
 			decl String:map[MAP_NAME_LENGTH], String:buffer[255];
 			new mark = GetConVarInt(g_Cvar_MarkCustomMaps);
 			
-			GetMenuItem(menu, param2, map, sizeof(map));
+			GetMenuItem(menu, param2, map, MAP_NAME_LENGTH);
 			
 			if (StrEqual(map, VOTE_EXTEND, false))
 			{
@@ -1405,7 +1424,7 @@ public Handler_MapVoteMenu(Handle:menu, MenuAction:action, param1, param2)
 			{
 				new count = GetMenuItemCount(menu);
 				decl item;
-				decl String:map[32];
+				decl String:map[MAP_NAME_LENGTH];
 				
 				do
 				{
@@ -1422,7 +1441,7 @@ public Handler_MapVoteMenu(Handle:menu, MenuAction:action, param1, param2)
 						}
 					}
 					item = GetRandomInt(startInt, count - 1);
-					GetMenuItem(menu, item, map, sizeof(map));
+					GetMenuItem(menu, item, map, MAP_NAME_LENGTH);
 				}
 				while (strcmp(map, VOTE_EXTEND, false) == 0);
 				
@@ -1460,12 +1479,12 @@ public Handler_BuiltinVote(Handle:vote, BuiltinVoteAction:action, param1, param2
 				{
 					new count = GetBuiltinVoteItemCount(vote);
 					decl item;
-					decl String:map[32];
+					decl String:map[MAP_NAME_LENGTH];
 					
 					do
 					{
 						item = GetRandomInt(0, count - 1);
-						GetBuiltinVoteItem(vote, item, map, sizeof(map));
+						GetBuiltinVoteItem(vote, item, map, MAP_NAME_LENGTH);
 					}
 					while (strcmp(map, BUILTINVOTES_EXTEND, false) == 0);
 
@@ -1498,7 +1517,7 @@ public Action:Timer_ChangeMap(Handle:hTimer, Handle:dp)
 	
 	if (dp == INVALID_HANDLE)
 	{
-		if (!GetNextMap(map, sizeof(map)))
+		if (!GetNextMap(map, MAP_NAME_LENGTH))
 		{
 			//No passed map and no set nextmap. fail!
 			return Plugin_Stop;	
@@ -1507,7 +1526,7 @@ public Action:Timer_ChangeMap(Handle:hTimer, Handle:dp)
 	else
 	{
 		ResetPack(dp);
-		ReadPackString(dp, map, sizeof(map));		
+		ReadPackString(dp, map, MAP_NAME_LENGTH);
 	}
 	
 	ForceChangeLevel(map, "Map Vote");
@@ -1522,10 +1541,10 @@ CreateNextVote()
 		ClearArray(g_NextMapList);
 	}
 	
-	decl String:map[32];
+	decl String:map[MAP_NAME_LENGTH];
 	new index, Handle:tempMaps  = CloneArray(g_MapList);
 	
-	GetCurrentMap(map, sizeof(map));
+	GetCurrentMap(map, MAP_NAME_LENGTH);
 	index = FindStringInArray(tempMaps, map);
 	if (index != -1)
 	{
@@ -1536,7 +1555,7 @@ CreateNextVote()
 	{
 		for (new i = 0; i < GetArraySize(g_OldMapList); i++)
 		{
-			GetArrayString(g_OldMapList, i, map, sizeof(map));
+			GetArrayString(g_OldMapList, i, map, MAP_NAME_LENGTH);
 			index = FindStringInArray(tempMaps, map);
 			if (index != -1)
 			{
@@ -1549,7 +1568,7 @@ CreateNextVote()
 	for (new i = 0; i < limit; i++)
 	{
 		new b = GetRandomInt(0, GetArraySize(tempMaps) - 1);
-		GetArrayString(tempMaps, b, map, sizeof(map));		
+		GetArrayString(tempMaps, b, map, MAP_NAME_LENGTH);
 		PushArrayString(g_NextMapList, map);
 		RemoveFromArray(tempMaps, b);
 	}
@@ -1580,7 +1599,7 @@ NominateResult:InternalNominateMap(String:map[], bool:force, owner)
 	if (owner && ((index = FindValueInArray(g_NominateOwners, owner)) != -1))
 	{
 		new String:oldmap[MAP_NAME_LENGTH];
-		GetArrayString(g_NominateList, index, oldmap, sizeof(oldmap));
+		GetArrayString(g_NominateList, index, oldmap, MAP_NAME_LENGTH);
 		Call_StartForward(g_NominationsResetForward);
 		Call_PushString(oldmap);
 		Call_PushCell(owner);
@@ -1610,7 +1629,7 @@ NominateResult:InternalNominateMap(String:map[], bool:force, owner)
 	while (GetArraySize(g_NominateList) > GetConVarInt(g_Cvar_IncludeMaps))
 	{
 		new String:oldmap[MAP_NAME_LENGTH];
-		GetArrayString(g_NominateList, 0, oldmap, sizeof(oldmap));
+		GetArrayString(g_NominateList, 0, oldmap, MAP_NAME_LENGTH);
 		Call_StartForward(g_NominationsResetForward);
 		Call_PushString(oldmap);
 		Call_PushCell(GetArrayCell(g_NominateOwners, 0));
@@ -1647,7 +1666,7 @@ bool:InternalRemoveNominationByMap(String:map[])
 	for (new i = 0; i < GetArraySize(g_NominateList); i++)
 	{
 		new String:oldmap[MAP_NAME_LENGTH];
-		GetArrayString(g_NominateList, i, oldmap, sizeof(oldmap));
+		GetArrayString(g_NominateList, i, oldmap, MAP_NAME_LENGTH);
 
 		if(strcmp(map, oldmap, false) == 0)
 		{
@@ -1691,7 +1710,7 @@ bool:InternalRemoveNominationByOwner(owner)
 	if (owner && ((index = FindValueInArray(g_NominateOwners, owner)) != -1))
 	{
 		new String:oldmap[MAP_NAME_LENGTH];
-		GetArrayString(g_NominateList, index, oldmap, sizeof(oldmap));
+		GetArrayString(g_NominateList, index, oldmap, MAP_NAME_LENGTH);
 
 		Call_StartForward(g_NominationsResetForward);
 		Call_PushString(oldmap);
@@ -1754,7 +1773,7 @@ public Native_GetExcludeMapList(Handle:plugin, numParams)
 	
 	for (new i=0; i<size; i++)
 	{
-		GetArrayString(g_OldMapList, i, map, sizeof(map));
+		GetArrayString(g_OldMapList, i, map, MAP_NAME_LENGTH);
 		PushArrayString(array, map);	
 	}
 	
@@ -1773,7 +1792,7 @@ public Native_GetNominatedMapList(Handle:plugin, numParams)
 
 	for (new i = 0; i < GetArraySize(g_NominateList); i++)
 	{
-		GetArrayString(g_NominateList, i, map, sizeof(map));
+		GetArrayString(g_NominateList, i, map, MAP_NAME_LENGTH);
 		PushArrayString(maparray, map);
 
 		// If the optional parameter for an owner list was passed, then we need to fill that out as well
@@ -1845,7 +1864,7 @@ stock SetupWarningTimer(WarningType:type, MapChange:when=MapChange_MapEnd, Handl
 	
 	decl Handle:forwardVote;
 	decl Handle:cvarTime;
-	decl String:translationKey[32];
+	decl String:translationKey[64];
 	
 	switch (type)
 	{
@@ -1885,7 +1904,7 @@ stock InitializeOfficialMapList()
 {
 	decl String:mapListPath[PLATFORM_MAX_PATH];
 	
-	BuildPath(Path_SM, mapListPath, sizeof(mapListPath), "configs/mapchooser_extended/maps/%s.txt", g_GameModName);
+	BuildPath(Path_SM, mapListPath, PLATFORM_MAX_PATH, "configs/mapchooser_extended/maps/%s.txt", g_GameModName);
 	SetMapListCompatBind("official", mapListPath);
 
 	// If this fails, we want it to have an empty adt_array
