@@ -822,7 +822,7 @@ public Action:Command_Mapvote(client, args)
 {
 	ShowActivity2(client, "[MCE] ", "%t", "Initiated Vote Map");
 
-	SetupWarningTimer(WarningType_Vote, MapChange_MapEnd);
+	SetupWarningTimer(WarningType_Vote, MapChange_MapEnd, INVALID_HANDLE, true);
 
 	//InitiateVote(MapChange_MapEnd, INVALID_HANDLE);
 
@@ -1846,9 +1846,9 @@ SetupRunoffTimer(MapChange:when, Handle:mapList)
 }
 */
 
-stock SetupWarningTimer(WarningType:type, MapChange:when=MapChange_MapEnd, Handle:mapList=INVALID_HANDLE)
+stock SetupWarningTimer(WarningType:type, MapChange:when=MapChange_MapEnd, Handle:mapList=INVALID_HANDLE, bool:force=false)
 {
-	if (!GetArraySize(g_MapList) || (when == MapChange_MapEnd && !GetConVarBool(g_Cvar_EndOfMapVote)) || g_MapVoteCompleted || g_HasVoteStarted)
+	if (!GetArraySize(g_MapList) || g_ChangeMapInProgress || g_HasVoteStarted || (!force && ((when == MapChange_MapEnd && !GetConVarBool(g_Cvar_EndOfMapVote)) || g_MapVoteCompleted)))
 	{
 		return;
 	}
