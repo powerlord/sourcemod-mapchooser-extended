@@ -843,7 +843,7 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 	// Check if a builtinvote is in progress first
 	// BuiltinVotes running at the same time as a regular vote can cause hintbox problems,
 	// so always check for a standard vote
-	if (IsVoteInProgress() || (g_BuiltinVotes && IsBuiltinVoteInProgress()) || (g_NativeVotes) )
+	if (IsVoteInProgress() || (g_BuiltinVotes && IsBuiltinVoteInProgress()) || (g_NativeVotes && NativeVotes_IsVoteInProgress()) )
 	{
 		// Can't start a vote, try again in 5 seconds.
 		//g_RetryTimer = CreateTimer(5.0, Timer_StartMapVote, _, TIMER_FLAG_NO_MAPCHANGE);
