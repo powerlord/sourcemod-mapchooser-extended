@@ -39,7 +39,7 @@
 
 #pragma semicolon 1
 
-#define MCE_VERSION "1.9.4"
+#define MCE_VERSION "1.9.5"
 
 /* Map name size bumped up to support longer map names */
 #define MAP_NAME_LENGTH 65
