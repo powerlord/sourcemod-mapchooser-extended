@@ -45,7 +45,7 @@
 #undef REQUIRE_EXTENSIONS
 #include <builtinvotes>
 
-#define MCE_VERSION "1.9.5"
+#define MCE_VERSION "1.9.6"
 
 #define BV "builtinvotes"
 #define NV "nativevotes"
@@ -2210,7 +2210,7 @@ stock AddExtendToMenu(Handle:menu, MapChange:when)
 			// Built-in votes don't have "Don't Change", send Extend instead
 			NativeVotes_AddItem(menu, NATIVEVOTES_EXTEND, NATIVEVOTES_EXTEND);
 		}
-		if (g_BuiltinVotes)
+		else if (g_BuiltinVotes)
 		{
 			// Built-in votes doesn't have "Don't Change", send Extend instead
 			AddBuiltinVoteItem(menu, BUILTINVOTES_EXTEND, BUILTINVOTES_EXTEND);
