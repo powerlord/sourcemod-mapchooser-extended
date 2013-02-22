@@ -329,13 +329,13 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 
 public OnAllPluginsLoaded()
 {
-	g_NativeVotes = LibraryExists(NV);
+	g_NativeVotes = LibraryExists(NV) && NativeVotes_IsVoteTypeSupported(NativeVotesType_NextLevelMult);
 	g_BuiltinVotes = LibraryExists(BV) && StrEqual(g_GameModName, "tf");
 }
 
 public OnLibraryAdded(const String:name[])
 {
-	if (StrEqual(name, NV))
+	if (StrEqual(name, NV) && NativeVotes_IsVoteTypeSupported(NativeVotesType_NextLevelMult))
 	{
 		g_NativeVotes = true;
 	}
