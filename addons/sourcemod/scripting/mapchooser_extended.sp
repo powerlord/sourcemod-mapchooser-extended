@@ -38,6 +38,7 @@
 #include <mapchooser>
 #include "include/mapchooser_extended"
 #include <nextmap>
+#include <sdktools>
 
 #undef REQUIRE_PLUGIN
 #include <nativevotes>
@@ -49,6 +50,35 @@
 
 #define BV "builtinvotes"
 #define NV "nativevotes"
+
+enum RoundCounting
+{
+	RoundCounting_Standard = 0,
+	RoundCounting_MvM,
+	RoundCounting_ArmsRace,
+}
+
+// CSGO requires two cvars to get the game type
+enum
+{
+	GameType_Classic	= 0,
+	GameType_GunGame	= 1,
+	GameType_Training	= 2,
+	GameType_Custom		= 3,
+}
+
+enum
+{
+	GunGameMode_ArmsRace	= 0,
+	GunGameMode_Demolition	= 1,
+	GunGameMode_DeathMatch	= 2,
+}
+
+
+#define CSGO_CASUAL			0
+#define CSGO_COMPETITIVE	0
+
+#define CSGO_GUNGAME		0
 
 public Plugin:myinfo =
 {
@@ -66,6 +96,8 @@ new Handle:g_Cvar_Fraglimit = INVALID_HANDLE;
 new Handle:g_Cvar_Bonusroundtime = INVALID_HANDLE;
 new Handle:g_Cvar_MatchClinch = INVALID_HANDLE;
 new Handle:g_Cvar_VoteNextLevel = INVALID_HANDLE;
+new Handle:g_Cvar_GameType = INVALID_HANDLE;
+new Handle:g_Cvar_GameMode = INVALID_HANDLE;
 
 /* Plugin ConVars */
 new Handle:g_Cvar_StartTime = INVALID_HANDLE;
@@ -147,11 +179,14 @@ new String:g_GameModName[64];
 new bool:g_WarningInProgress = false;
 new bool:g_AddNoVote = false;
 
+new RoundCounting:g_RoundCounting = RoundCounting_Standard;
+
 /* Upper bound of how many team there could be */
 #define MAXTEAMS 10
 new g_winCount[MAXTEAMS];
 
 new bool:g_BlockedSlots = false;
+new g_ObjectiveEnt = -1;
 
 enum TimerLocation
 {
@@ -245,8 +280,6 @@ public OnPluginStart()
 	if (g_Cvar_Bonusroundtime == INVALID_HANDLE)
 		g_Cvar_Bonusroundtime = FindConVar("mp_bonusroundtime");
 	
-	g_Cvar_VoteNextLevel = FindConVar("sv_vote_issue_nextlevel_allowed");
-	
 	if (g_Cvar_Winlimit != INVALID_HANDLE || g_Cvar_Maxrounds != INVALID_HANDLE)
 	{
 		decl String:folder[64];
@@ -257,6 +290,9 @@ public OnPluginStart()
 			HookEvent("teamplay_win_panel", Event_TeamPlayWinPanel);
 			HookEvent("teamplay_restart_round", Event_TFRestartRound);
 			HookEvent("arena_win_panel", Event_TeamPlayWinPanel);
+			HookEvent("pve_win_panel", Event_MvMWinPanel);
+			g_Cvar_VoteNextLevel = FindConVar("sv_vote_issue_nextlevel_allowed");
+			
 		}
 		else if (strcmp(folder, "nucleardawn") == 0)
 		{
@@ -267,6 +303,13 @@ public OnPluginStart()
 			HookEvent("round_end", Event_RoundEnd);
 			HookEvent("cs_intermission", Event_Intermission);
 			HookEvent("announce_phase_end", Event_PhaseEnd);
+			g_Cvar_VoteNextLevel = FindConVar("mp_endmatch_votenextmap");
+			g_Cvar_GameType = FindConVar("game_type");
+			g_Cvar_GameMode = FindConVar("game_mode");
+		}
+		else if (strcmp(folder, "dod") == 0)
+		{
+			HookEvent("dod_round_win", Event_RoundEnd);
 		}
 		else
 		{
@@ -360,6 +403,26 @@ public OnLibraryRemoved(const String:name[])
 	}
 }
 
+public OnMapStart()
+{
+	decl String:folder[64];
+	GetGameFolderName(folder, sizeof(folder));
+	
+	g_RoundCounting = RoundCounting_Standard;
+	g_ObjectiveEnt = -1;
+	
+	if (strcmp(folder, "tf") && GameRules_GetProp("m_bPlayingMannVsMachine"))
+	{
+		g_RoundCounting = RoundCounting_MvM;
+		g_ObjectiveEnt = FindEntityByClassname(-1, "tf_objective_resource");
+	}
+	else if (strcmp(folder, "csgo") && GetConVarInt(g_Cvar_GameType) == GameType_GunGame &&
+		GetConVarInt(g_Cvar_GameMode) != GunGameMode_DeathMatch)
+	{
+		g_RoundCounting = RoundCounting_ArmsRace;
+	}
+}
+
 public OnConfigsExecuted()
 {
 	if (ReadMapList(g_MapList,
@@ -375,9 +438,9 @@ public OnConfigsExecuted()
 		}
 	}
 	
-	// Disable the next level vote in TF2.
-	// This has two effects: 1. Stop the next level vote (which overlaps rtv functionality).
-	// 2. Stop the built-in end level vote.
+	// Disable the next level vote in TF2 and CS:GO
+	// In TF2, this has two effects: 1. Stop the next level vote (which overlaps rtv functionality).
+	// 2. Stop the built-in end level vote.  This is the only thing that happens in CS:GO
 	if (g_Cvar_VoteNextLevel != INVALID_HANDLE)
 	{
 		SetConVarBool(g_Cvar_VoteNextLevel, false);
@@ -663,6 +726,15 @@ public Event_TeamPlayWinPanel(Handle:event, const String:name[], bool:dontBroadc
 	}
 }
 
+public Event_MvMWinPanel(Handle:event, const String:name[], bool:dontBroadcast)
+{
+	if (GetEventInt(event, "winning_team") == 2)
+	{
+		g_TotalRounds = GetEntProp(g_ObjectiveEnt, Prop_Send, "m_nMannVsMachineWaveCount");
+		CheckMaxRounds(g_TotalRounds);
+	}
+}
+
 public Event_Intermission(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	g_HasIntermissionStarted = true;
@@ -682,9 +754,24 @@ public Event_PhaseEnd(Handle:event, const String:name[], bool:dontBroadcast)
 	g_winCount[3] = t_score;
 }
  
+public Event_WeaponRank(Handle:event, const String:name[], bool:dontBroadcast)
+{
+	new rank = GetEventInt(event, "weaponrank");
+	if (rank > g_TotalRounds)
+	{
+		g_TotalRounds = rank;
+		CheckMaxRounds(g_TotalRounds);
+	}
+}
+
 /* You ask, why don't you just use team_score event? And I answer... Because CSS doesn't. */
 public Event_RoundEnd(Handle:event, const String:name[], bool:dontBroadcast)
 {
+	if (g_RoundCounting == RoundCounting_ArmsRace)
+	{
+		return;
+	}
+	
 	if (g_ChangeMapAtRoundEnd)
 	{
 		g_ChangeMapAtRoundEnd = false;
@@ -693,9 +780,9 @@ public Event_RoundEnd(Handle:event, const String:name[], bool:dontBroadcast)
 	}
 	
 	new winner;
-	if (strcmp(name, "round_win") == 0)
+	if (strcmp(name, "round_win") == 0 || strcmp(name, "dod_round_win") == 0)
 	{
-		// Nuclear Dawn
+		// Nuclear Dawn & DoD:S
 		winner = GetEventInt(event, "team");
 	}
 	else
@@ -766,19 +853,34 @@ public CheckWinLimit(winner_score)
 }
 
 public CheckMaxRounds(roundcount)
-{		
-	if (g_Cvar_Maxrounds != INVALID_HANDLE)
+{
+	new maxrounds = 0;
+	
+	if (g_RoundCounting == RoundCounting_ArmsRace)
 	{
-		new maxrounds = GetConVarInt(g_Cvar_Maxrounds);
-		if (maxrounds)
+		maxrounds = GameRules_GetProp("m_iNumGunGameProgressiveWeaponsCT");
+	}
+	else if (g_RoundCounting == RoundCounting_MvM)
+	{
+		maxrounds = GetEntProp(g_ObjectiveEnt, Prop_Send, "m_nMannVsMachineMaxWaveCount");
+	}
+	else if (g_Cvar_Maxrounds != INVALID_HANDLE)
+	{
+		maxrounds = GetConVarInt(g_Cvar_Maxrounds);
+	}
+	else
+	{
+		return;
+	}
+	
+	if (maxrounds)
+	{
+		if (roundcount >= (maxrounds - GetConVarInt(g_Cvar_StartRounds)))
 		{
-			if (roundcount >= (maxrounds - GetConVarInt(g_Cvar_StartRounds)))
+			if (!g_WarningInProgress || g_WarningTimer == INVALID_HANDLE)
 			{
-				if (!g_WarningInProgress || g_WarningTimer == INVALID_HANDLE)
-				{
-					SetupWarningTimer(WarningType_Vote, MapChange_MapEnd);
-					//InitiateVote(MapChange_MapEnd, INVALID_HANDLE);
-				}
+				SetupWarningTimer(WarningType_Vote, MapChange_MapEnd);
+				//InitiateVote(MapChange_MapEnd, INVALID_HANDLE);
 			}
 		}
 	}
