@@ -411,13 +411,13 @@ public OnMapStart()
 	g_RoundCounting = RoundCounting_Standard;
 	g_ObjectiveEnt = -1;
 	
-	if (strcmp(folder, "tf") && GameRules_GetProp("m_bPlayingMannVsMachine"))
+	if (strcmp(folder, "tf") == 0 && GameRules_GetProp("m_bPlayingMannVsMachine"))
 	{
 		g_RoundCounting = RoundCounting_MvM;
 		g_ObjectiveEnt = FindEntityByClassname(-1, "tf_objective_resource");
 	}
-	else if (strcmp(folder, "csgo") && GetConVarInt(g_Cvar_GameType) == GameType_GunGame &&
-		GetConVarInt(g_Cvar_GameMode) != GunGameMode_DeathMatch)
+	else if (strcmp(folder, "csgo") == 0 && GetConVarInt(g_Cvar_GameType) == GameType_GunGame &&
+		GetConVarInt(g_Cvar_GameMode) == GunGameMode_ArmsRace)
 	{
 		g_RoundCounting = RoundCounting_ArmsRace;
 	}
