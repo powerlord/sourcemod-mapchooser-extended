@@ -9,7 +9,7 @@
 #include <mapchooser_extended>
 #include <sdktools>
 
-#define VERSION "1.4"
+#define VERSION "1.4.1"
 
 #define CONFIG_FILE "configs/mapchooser_extended/sounds.cfg"
 #define CONFIG_DIRECTORY "configs/mapchooser_extended/sounds"
@@ -206,6 +206,13 @@ public OnMapVoteWarningTick(time)
 				if (soundData[SoundStore_Type] == SoundType_Event)
 				{
 					new Handle:broadcastEvent = CreateEvent("teamplay_broadcast_audio");
+					if (broadcastEvent == INVALID_HANDLE)
+					{
+						#if defined DEBUG
+						LogError("Could not create teamplay_broadcast_event. This may be because there are no players connected.");
+						#endif
+						return;
+					}
 					SetEventInt(broadcastEvent, "team", -1);
 					SetEventString(broadcastEvent, "sound", soundData[SoundStore_Value]);
 					FireEvent(broadcastEvent);
@@ -252,6 +259,13 @@ PlaySound(SoundEvent:event)
 				if (soundData[SoundStore_Type] == SoundType_Event)
 				{
 					new Handle:broadcastEvent = CreateEvent("teamplay_broadcast_audio");
+					if (broadcastEvent == INVALID_HANDLE)
+					{
+						#if defined DEBUG
+						LogError("Could not create teamplay_broadcast_event. This may be because there are no players connected.");
+						#endif
+						return;
+					}
 					SetEventInt(broadcastEvent, "team", -1);
 					SetEventString(broadcastEvent, "sound", soundData[SoundStore_Value]);
 					FireEvent(broadcastEvent);
