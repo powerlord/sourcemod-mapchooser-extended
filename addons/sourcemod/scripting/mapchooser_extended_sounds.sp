@@ -9,7 +9,7 @@
 #include <mapchooser_extended>
 #include <sdktools>
 
-#define VERSION "1.3"
+#define VERSION "1.4"
 
 #define CONFIG_FILE "configs/mapchooser_extended/sounds.cfg"
 #define CONFIG_DIRECTORY "configs/mapchooser_extended/sounds"
@@ -46,6 +46,20 @@ enum SoundEvent
 	SoundEvent_VoteEnd = 2,
 	SoundEvent_VoteWarning = 3,
 	SoundEvent_RunoffWarning = 4,
+}
+
+enum SoundType
+{
+	SoundType_None,
+	SoundType_Sound,
+	SoundType_Builtin,
+	SoundType_Event
+}
+
+enum SoundStore
+{
+	String:SoundStore_Value[PLATFORM_MAX_PATH],
+	SoundType:SoundStore_Type
 }
 
 public Plugin:myinfo = 
@@ -174,12 +188,33 @@ public OnMapVoteWarningTick(time)
 {
 	if (GetConVarBool(g_Cvar_EnableSounds) && GetConVarBool(g_Cvar_EnableCounterSounds)) {
 		decl String:currentType[SET_NAME_MAX_LENGTH];
-		decl Handle:counterArray;
-		decl String:currentSound[PLATFORM_MAX_PATH];
+		decl Handle:counterTrie;
 		
-		if (GetArrayString(g_TypeNames, _:SoundEvent_Counter, currentType, sizeof(currentType)) > 0 && GetTrieValue(g_CurrentSoundSet, currentType, counterArray) && GetArrayString(counterArray, time, currentSound, sizeof(currentSound)) > 0)
+		if (g_CurrentSoundSet != INVALID_HANDLE)
 		{
-			EmitSoundToAll(currentSound);
+			if (GetArrayString(g_TypeNames, _:SoundEvent_Counter, currentType, sizeof(currentType)) > 0 && GetTrieValue(g_CurrentSoundSet, currentType, counterTrie))
+			{
+				new String:key[5];
+				IntToString(time, key, sizeof(key));
+				
+				new soundData[SoundStore];
+				if (!GetTrieArray(counterTrie, key, soundData[0], sizeof(soundData)))
+				{
+					return;
+				}
+				
+				if (soundData[SoundStore_Type] == SoundType_Event)
+				{
+					new Handle:broadcastEvent = CreateEvent("teamplay_broadcast_audio");
+					SetEventInt(broadcastEvent, "team", -1);
+					SetEventString(broadcastEvent, "sound", soundData[SoundStore_Value]);
+					FireEvent(broadcastEvent);
+				}
+				else
+				{
+					EmitSoundToAll(soundData[SoundStore_Value]);
+				}
+			}
 		}
 	}
 }
@@ -209,11 +244,22 @@ PlaySound(SoundEvent:event)
 		if (g_CurrentSoundSet != INVALID_HANDLE)
 		{
 			decl String:currentType[SET_NAME_MAX_LENGTH];
-			decl String:currentSound[PLATFORM_MAX_PATH];
 			
-			if (GetArrayString(g_TypeNames, _:event, currentType, sizeof(currentType)) > 0 && GetTrieString(g_CurrentSoundSet, currentType, currentSound, sizeof(currentSound)))
+			if (GetArrayString(g_TypeNames, _:event, currentType, sizeof(currentType)) > 0)
 			{
-				EmitSoundToAll(currentSound);
+				new soundData[SoundStore];
+				GetTrieArray(g_CurrentSoundSet, currentType, soundData[0], sizeof(soundData));
+				if (soundData[SoundStore_Type] == SoundType_Event)
+				{
+					new Handle:broadcastEvent = CreateEvent("teamplay_broadcast_audio");
+					SetEventInt(broadcastEvent, "team", -1);
+					SetEventString(broadcastEvent, "sound", soundData[SoundStore_Value]);
+					FireEvent(broadcastEvent);
+				}
+				else
+				{
+					EmitSoundToAll(soundData[SoundStore_Value]);
+				}
 			}
 		}
 	}
@@ -300,14 +346,7 @@ LoadSounds()
 									case SoundEvent_Counter:
 									{
 										// Counter is special, as it has multiple values
-										// Since SetTrieArray doesn't work with string arrays, we use a Handle, and manually initialize it
-										new Handle:counterArray = CreateArray(ByteCountToCells(PLATFORM_MAX_PATH), COUNTER_MAX_SIZE + 1);
-										
-										// The equivalent of new String:counterArray[COUNTER_MAX_SIZE][PLATFORM_MAX_PATH];
-										for (new i = 0; i <= COUNTER_MAX_SIZE; i++)
-										{
-											SetArrayString(counterArray, i, "");
-										}
+										new Handle:counterTrie = CreateTrie();
 										
 										if (KvGotoFirstSubKey(soundsKV))
 										{
@@ -315,29 +354,44 @@ LoadSounds()
 											{
 												// Get the current key
 												decl String:time[COUNTER_MAX_SIZE_DIGITS + 1];
-												decl String:soundFile[PLATFORM_MAX_PATH];
 												
 												KvGetSectionName(soundsKV, time, sizeof(time));
 												
-												new key = StringToInt(time);
+												new soundData[SoundStore];
 												
-												RetrieveSound(soundsKV, builtinSet, soundFile, sizeof(soundFile));
-												SetArrayString(counterArray, key, soundFile);
+												// new key = StringToInt(time);
+												
+												soundData[SoundStore_Type] =  RetrieveSound(soundsKV, builtinSet, soundData[SoundStore_Value], PLATFORM_MAX_PATH);
+												if (soundData[SoundStore_Type] == SoundType_None)
+												{
+													continue;
+												}
+												
+												// This seems wrong, but this is documented on the forums here: http://forums.alliedmods.net/showthread.php?t=151942
+												SetTrieArray(counterTrie, time, soundData[0], sizeof(soundData));
+												
+												//SetArrayString(counterArray, key, soundFile);
 											} while (KvGotoNextKey(soundsKV));
 											KvGoBack(soundsKV);
 										}
 										
-										SetTrieValue(setTrie, currentType, _:counterArray);
+										SetTrieValue(setTrie, currentType, _:counterTrie);
 										
 									}
 									
 									// Set the sounds directly for other types
 									default:
 									{
-										decl String:soundFile[PLATFORM_MAX_PATH];
+										new soundData[SoundStore];
 										
-										RetrieveSound(soundsKV, builtinSet, soundFile, sizeof(soundFile));
-										SetTrieString(setTrie, currentType, soundFile);
+										soundData[SoundStore_Type] = RetrieveSound(soundsKV, builtinSet, soundData[SoundStore_Value], PLATFORM_MAX_PATH);
+										
+										if (soundData[SoundStore_Type] == SoundType_None)
+										{
+											continue;
+										}
+										
+										SetTrieArray(setTrie, currentType, soundData[0], sizeof(soundData));
 									}
 								}
 							} while (KvGotoNextKey(soundsKV));
@@ -358,31 +412,39 @@ LoadSounds()
 	}
 }
 
-// Internal LoadSounds function to get 
-String:RetrieveSound(Handle:soundsKV, bool:builtin, String:soundFile[], soundFileSize)
+// Internal LoadSounds function to get sound and type 
+SoundType:RetrieveSound(Handle:soundsKV, bool:builtin, String:soundFile[], soundFileSize)
 {
-	// We have to new this here, as we require it to be set to "" if not yet loaded
-	// new String:soundFile[PLATFORM_MAX_PATH];
-	
-	// This MUST set the string to "" either way this goes if there's nothing set
 	if (builtin)
 	{
-		KvGetString(soundsKV, "builtin", soundFile, soundFileSize, "");
-	}
-	else
-	{
-		strcopy(soundFile, soundFileSize, "");
+		// event is considered before builtin, as it has related game data and should always be used in preference to builtin
+		KvGetString(soundsKV, "event", soundFile,soundFileSize);
+		
+		if (!StrEqual(soundFile, ""))
+		{
+			return SoundType_Event;
+		}
+		
+		KvGetString(soundsKV, "builtin", soundFile, soundFileSize);
+		if (!StrEqual(soundFile, ""))
+		{
+			return SoundType_Builtin;
+		}
 	}
 	
-	// If this set isn't a builtin or the builtin isn't set
-	if (StrEqual(soundFile, ""))
+	KvGetString(soundsKV, "sound", soundFile, soundFileSize);
+
+	if (!StrEqual(soundFile, ""))
 	{
-		KvGetString(soundsKV, "sound", soundFile, soundFileSize, "");
+		return SoundType_Sound;
 	}
+	
+	// Whoops, didn't find this sound
+	return SoundType_None;
 }
 
 // Preload all sounds in a set
-stock BuildDownloadsTable(Handle:currentSoundSet)
+BuildDownloadsTable(Handle:currentSoundSet)
 {
 	if (currentSoundSet != INVALID_HANDLE)
 	{
@@ -395,15 +457,20 @@ stock BuildDownloadsTable(Handle:currentSoundSet)
 			{
 				case SoundEvent_Counter:
 				{
-					decl Handle:counterArray;
-					if (GetTrieValue(currentSoundSet, currentType, counterArray))
+					decl Handle:counterTrie;
+					if (GetTrieValue(currentSoundSet, currentType, counterTrie))
 					{
-						for (new j = 0; j < GetArraySize(counterArray); j++)
+						// Skip value 0
+						for (new j = 1; j <= COUNTER_MAX_SIZE; ++j)
 						{
-							decl String:currentSound[PLATFORM_MAX_PATH];
-							if (GetArrayString(counterArray, j, currentSound, sizeof(currentSound)) > 1)
+							new String:key[5];
+							IntToString(j, key, sizeof(key));
+							
+							new soundData[SoundStore];
+							GetTrieArray(counterTrie, key, soundData[0], sizeof(soundData));
+							if (soundData[SoundStore_Type] != SoundType_Event)
 							{
-								CacheSound(currentSound);
+								CacheSound(soundData);
 							}
 						}
 					}
@@ -411,10 +478,12 @@ stock BuildDownloadsTable(Handle:currentSoundSet)
 				
 				default:
 				{
-					decl String:currentSound[PLATFORM_MAX_PATH];
-					if (GetTrieString(currentSoundSet, currentType, currentSound, sizeof(currentSound)))
+					new soundData[SoundStore];
+					GetTrieArray(currentSoundSet, currentType, soundData[0], sizeof(soundData));
+					
+					if (soundData[SoundStore_Type] != SoundType_Event)
 					{
-						CacheSound(currentSound);
+						CacheSound(soundData);
 					}
 				}
 			}
@@ -439,17 +508,21 @@ stock BuildDownloadsTableAll()
 }
 
 // Found myself repeating this code, so I pulled it into a separate function
-CacheSound(const String:sound[])
+CacheSound(soundData[SoundStore])
 {
-	if (!StrEqual(sound, ""))
+	if (soundData[SoundStore_Type] == SoundType_Builtin)
 	{
-		if (PrecacheSound(sound))
+		PrecacheSound(soundData[SoundStore_Value]);
+	}
+	else if (soundData[SoundStore_Type] == SoundType_Sound)
+	{
+		if (PrecacheSound(soundData[SoundStore_Value]))
 		{
 			decl String:downloadLocation[PLATFORM_MAX_PATH];
-			Format(downloadLocation, sizeof(downloadLocation), "sound/%s", sound);
+			Format(downloadLocation, sizeof(downloadLocation), "sound/%s", soundData[SoundStore_Value]);
 			AddFileToDownloadsTable(downloadLocation);
 		} else {
-			LogMessage("Failed to load sound: %s", sound);
+			LogMessage("Failed to load sound: %s", soundData[SoundStore_Value]);
 		}
 	}
 }
@@ -466,7 +539,7 @@ stock CloseSoundArrayHandles()
 		
 		GetArrayString(g_SetNames, i, currentSet, sizeof(currentSet));
 		GetTrieValue(g_SoundFiles, currentSet, trieHandle);
-		// "counter" is an adt_array, close that too
+		// "counter" is an adt_trie, close that too
 		GetTrieValue(trieHandle, "counter", arrayHandle);
 		CloseHandle(arrayHandle);
 		CloseHandle(trieHandle);
