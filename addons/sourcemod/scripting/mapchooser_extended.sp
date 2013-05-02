@@ -273,12 +273,6 @@ public OnPluginStart()
 	g_Cvar_Winlimit = FindConVar("mp_winlimit");
 	g_Cvar_Maxrounds = FindConVar("mp_maxrounds");
 	g_Cvar_Fraglimit = FindConVar("mp_fraglimit");
-	g_Cvar_MatchClinch = FindConVar("mp_match_can_clinch");
-	
-	// DoD:S uses a different cvar name for bonus round time
-	g_Cvar_Bonusroundtime = FindConVar("dod_bonusroundtime");
-	if (g_Cvar_Bonusroundtime == INVALID_HANDLE)
-		g_Cvar_Bonusroundtime = FindConVar("mp_bonusroundtime");
 	
 	if (g_Cvar_Winlimit != INVALID_HANDLE || g_Cvar_Maxrounds != INVALID_HANDLE)
 	{
@@ -292,11 +286,12 @@ public OnPluginStart()
 			HookEvent("arena_win_panel", Event_TeamPlayWinPanel);
 			HookEvent("pve_win_panel", Event_MvMWinPanel);
 			g_Cvar_VoteNextLevel = FindConVar("sv_vote_issue_nextlevel_allowed");
-			
+			g_Cvar_Bonusroundtime = FindConVar("mp_bonusroundtime");			
 		}
 		else if (strcmp(folder, "nucleardawn") == 0)
 		{
 			HookEvent("round_win", Event_RoundEnd);
+			g_Cvar_Bonusroundtime = FindConVar("mp_bonusroundtime");			
 		}
 		else if (strcmp(folder, "csgo") == 0)
 		{
@@ -306,14 +301,18 @@ public OnPluginStart()
 			g_Cvar_VoteNextLevel = FindConVar("mp_endmatch_votenextmap");
 			g_Cvar_GameType = FindConVar("game_type");
 			g_Cvar_GameMode = FindConVar("game_mode");
+			g_Cvar_Bonusroundtime = FindConVar("mp_bonusroundtime");			
+			g_Cvar_MatchClinch = FindConVar("mp_match_can_clinch");
 		}
 		else if (strcmp(folder, "dod") == 0)
 		{
 			HookEvent("dod_round_win", Event_RoundEnd);
+			g_Cvar_Bonusroundtime = FindConVar("dod_bonusroundtime");
 		}
 		else
 		{
 			HookEvent("round_end", Event_RoundEnd);
+			g_Cvar_Bonusroundtime = FindConVar("mp_bonusroundtime");			
 		}
 	}
 	
@@ -366,7 +365,7 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 	// MapChooser Extended natives
 	CreateNative("IsMapOfficial", Native_IsMapOfficial);
 	CreateNative("CanNominate", Native_CanNominate);
-
+	
 	return APLRes_Success;
 }
 
