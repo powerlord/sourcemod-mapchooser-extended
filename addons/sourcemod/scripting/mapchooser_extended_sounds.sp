@@ -6,10 +6,10 @@
 #pragma semicolon 1
 #include <sourcemod>
 #include <mapchooser>
-#include <mapchooser_extended>
+#include "include/mapchooser_extended"
 #include <sdktools>
 
-#define VERSION "1.4.1"
+#define VERSION "1.9.7"
 
 #define CONFIG_FILE "configs/mapchooser_extended/sounds.cfg"
 #define CONFIG_DIRECTORY "configs/mapchooser_extended/sounds"
