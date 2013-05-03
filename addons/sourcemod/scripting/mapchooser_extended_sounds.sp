@@ -95,9 +95,12 @@ public OnPluginStart()
 	CreateConVar("mce_sounds_version", VERSION, "Mapchooser Extended Sounds Version", FCVAR_DONTRECORD|FCVAR_SPONLY|FCVAR_REPLICATED);
 
 	AutoExecConfig(true, "mapchooser_extended_sounds");
-	
-	RegServerCmd("sm_mapvote_reload_sounds", Command_Reload, "Reload Mapchooser Sound configuration file. HIGHLY EXPERIMENTAL. Consider unloading the plugin and reloading it instead, or just restart the entire server.");
-	RegAdminCmd("sm_mapvote_list_soundsets", Command_List_Soundsets, ADMFLAG_CONVARS, "List available Mapchooser Extended sound sets.");
+
+	RegAdminCmd("mce_sounds_reload", Command_Reload, ADMFLAG_CONVARS, "Reload Mapchooser Sound configuration file.");
+	RegAdminCmd("sm_mapvote_reload_sounds", Command_Reload, ADMFLAG_CONVARS, "Deprecated: use mce_sounds_reload");
+
+	RegAdminCmd("mce_sounds_list_soundsets", Command_List_Soundsets, ADMFLAG_CONVARS, "List available Mapchooser Extended sound sets.");
+	RegAdminCmd("sm_mapvote_list_soundsets", Command_List_Soundsets, ADMFLAG_CONVARS, "Deprecated: use mce_sounds_list_soundsets");
 
 	PopulateTypeNamesArray();
 	// LoadSounds needs to be  executed even if the plugin is "disabled" via the sm_mapvote_enablesounds cvar.
@@ -226,9 +229,10 @@ public OnMapVoteWarningTick(time)
 	}
 }
 
-public Action:Command_Reload(args)
+public Action:Command_Reload(client, args)
 {
 	LoadSounds();
+	ReplyToCommand(client, "[MCES] Reloaded sound configuration.");
 	return Plugin_Handled;
 }
 
