@@ -304,6 +304,7 @@ public Action:Command_Nomgrep(client, args)
     return Plugin_Continue;
 }
 
+//Build a menu of maps in the maplist that also contain the search key.
 BuildSearchMenu(client, String:search[MAP_NAME_LENGTH])
 {
 
@@ -315,7 +316,24 @@ BuildSearchMenu(client, String:search[MAP_NAME_LENGTH])
     for (new i = 0; i < GetMenuItemCount(g_MapMenu); i++)
     {
         GetMenuItem(g_MapMenu, i, tmpMap, MAP_NAME_LENGTH);
+
+        if(StrContains(tmpMap, search, false) >= 0)
+        {
+            AddMenuItem(tmpMenu, tmpMap, tmpMap);
+        }
     }
+
+    if(GetMenuItemCount(tmpMenu) <= 0)
+    {
+		ReplyToCommand(client, "%t", "Map was not found", mapname);
+    }
+    else
+    {
+        SetMenuTitle(tmpMenu, "%t", "Nominate Title", client);
+        DisplayMenu(tmpMenu, client, MENU_TIME_FOREVER);
+    }
+	
+	return;
 }
 
 
