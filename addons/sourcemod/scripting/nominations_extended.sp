@@ -301,6 +301,8 @@ public Action:Command_Nomgrep(client, args)
     decl String:search[MAP_NAME_LENGTH];
     GetCmdArg(1, search, sizeof(search));
 
+    BuildSearchMenu(client, search);
+
     return Plugin_Continue;
 }
 
