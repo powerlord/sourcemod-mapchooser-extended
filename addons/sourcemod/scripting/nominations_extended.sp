@@ -327,7 +327,7 @@ BuildSearchMenu(client, String:search[MAP_NAME_LENGTH])
 
     if(GetMenuItemCount(tmpMenu) <= 0)
     {
-		ReplyToCommand(client, "%t", "Map was not found", mapname);
+		ReplyToCommand(client, "%t", "Map was not found", search);
     }
     else
     {
