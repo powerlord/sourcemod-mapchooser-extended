@@ -87,6 +87,9 @@ public OnPluginStart()
 	RegConsoleCmd("say_team", Command_Say);
 	
 	RegConsoleCmd("sm_nominate", Command_Nominate);
+
+    RegConsoleCmd("sm_nomgrep", Command_Nomgrep);
+    RegConsoleCmd("sm_nomsearch", Command_Nomgrep);
 	
 	RegAdminCmd("sm_nominate_addmap", Command_Addmap, ADMFLAG_CHANGEMAP, "sm_nominate_addmap <mapname> - Forces a map to be on the next mapvote.");
 	
@@ -282,6 +285,39 @@ public Action:Command_Nominate(client, args)
 	
 	return Plugin_Continue;
 }
+
+public Action:Command_Nomgrep(client, args)
+{
+    if (!client || !IsNominateAllowed(client))
+    {
+        return Plugin_Handled;
+    }
+
+    if (args == 0)
+    {
+        ReplyToCommand(client, "[NE] Usage: sm_nomgrep <search key>");
+    }
+
+    decl String:search[MAP_NAME_LENGTH];
+    GetCmdArg(1, search, sizeof(search));
+
+    return Plugin_Continue;
+}
+
+BuildSearchMenu(client, String:search[MAP_NAME_LENGTH])
+{
+
+    new Handle:tmpMenu=CreateMenu(Handler_MapSelectMenu, MENU_ACTIONS_DEFAULT|MenuAction_DrawItem|MenuAction_DisplayItem);
+    new String:tmpMap[MAP_NAME_LENGTH];
+    new tmpStyle;
+
+    //For each map in the normal map menu
+    for (new i = 0; i < GetMenuItemCount(g_MapMenu); i++)
+    {
+        GetMenuItem(g_MapMenu, i, tmpMap, MAP_NAME_LENGTH);
+    }
+}
+
 
 AttemptNominate(client)
 {
