@@ -25,7 +25,7 @@
  * "Source Engine," the "SourcePawn JIT," and any Game MODs that run on software
  * by the Valve Corporation.  You must obey the GNU General Public License in
  * all respects for all other code used.  Additionally, AlliedModders LLC grants
- * this exception to all derivative works.  AlliedModders LLC defines further
+ * this exception to all derivative works.	AlliedModders LLC defines further
  * exceptions, found in LICENSE.txt (as of this writing, version JULY-31-2007),
  * or <http://www.sourcemod.net/license.php>.
  *
@@ -88,8 +88,8 @@ public OnPluginStart()
 	
 	RegConsoleCmd("sm_nominate", Command_Nominate);
 
-    RegConsoleCmd("sm_nomgrep", Command_Nomgrep);
-    RegConsoleCmd("sm_nomsearch", Command_Nomgrep);
+	RegConsoleCmd("sm_nomgrep", Command_Nomgrep);
+	RegConsoleCmd("sm_nomsearch", Command_Nomgrep);
 	
 	RegAdminCmd("sm_nominate_addmap", Command_Addmap, ADMFLAG_CHANGEMAP, "sm_nominate_addmap <mapname> - Forces a map to be on the next mapvote.");
 	
@@ -288,52 +288,52 @@ public Action:Command_Nominate(client, args)
 
 public Action:Command_Nomgrep(client, args)
 {
-    if (!client || !IsNominateAllowed(client))
-    {
-        return Plugin_Handled;
-    }
+	if (!client || !IsNominateAllowed(client))
+	{
+		return Plugin_Handled;
+	}
 
-    if (args == 0)
-    {
-        ReplyToCommand(client, "[NE] Usage: sm_nomgrep <search key>");
-    }
+	if (args == 0)
+	{
+		ReplyToCommand(client, "[NE] Usage: sm_nomgrep <search key>");
+	}
 
-    decl String:search[MAP_NAME_LENGTH];
-    GetCmdArg(1, search, sizeof(search));
+	decl String:search[MAP_NAME_LENGTH];
+	GetCmdArg(1, search, sizeof(search));
 
-    BuildSearchMenu(client, search);
+	BuildSearchMenu(client, search);
 
-    return Plugin_Continue;
+	return Plugin_Continue;
 }
 
 //Build a menu of maps in the maplist that also contain the search key.
 BuildSearchMenu(client, String:search[MAP_NAME_LENGTH])
 {
 
-    new Handle:tmpMenu=CreateMenu(Handler_MapSelectMenu, MENU_ACTIONS_DEFAULT|MenuAction_DrawItem|MenuAction_DisplayItem);
-    new String:tmpMap[MAP_NAME_LENGTH];
-    new tmpStyle;
+	new Handle:tmpMenu=CreateMenu(Handler_MapSelectMenu, MENU_ACTIONS_DEFAULT|MenuAction_DrawItem|MenuAction_DisplayItem);
+	new String:tmpMap[MAP_NAME_LENGTH];
+	new tmpStyle;
 
-    //For each map in the normal map menu
-    for (new i = 0; i < GetMenuItemCount(g_MapMenu); i++)
-    {
-        GetMenuItem(g_MapMenu, i, tmpMap, MAP_NAME_LENGTH);
+	//For each map in the normal map menu
+	for (new i = 0; i < GetMenuItemCount(g_MapMenu); i++)
+	{
+		GetMenuItem(g_MapMenu, i, tmpMap, MAP_NAME_LENGTH);
 
-        if(StrContains(tmpMap, search, false) >= 0)
-        {
-            AddMenuItem(tmpMenu, tmpMap, tmpMap);
-        }
-    }
+		if(StrContains(tmpMap, search, false) >= 0)
+		{
+			AddMenuItem(tmpMenu, tmpMap, tmpMap);
+		}
+	}
 
-    if(GetMenuItemCount(tmpMenu) <= 0)
-    {
+	if(GetMenuItemCount(tmpMenu) <= 0)
+	{
 		ReplyToCommand(client, "%t", "Map was not found", search);
-    }
-    else
-    {
-        SetMenuTitle(tmpMenu, "%t", "Nominate Title", client);
-        DisplayMenu(tmpMenu, client, MENU_TIME_FOREVER);
-    }
+	}
+	else
+	{
+		SetMenuTitle(tmpMenu, "%t", "Nominate Title", client);
+		DisplayMenu(tmpMenu, client, MENU_TIME_FOREVER);
+	}
 	
 	return;
 }
