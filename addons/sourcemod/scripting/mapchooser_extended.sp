@@ -1235,7 +1235,7 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 					AddMenuItem(g_VoteMenu, VOTE_DONTCHANGE, "Don't Change");
 				}
 			}
-			else if (StrEqual(map, VOTE_EXTEND) || StrEqual(map, BUILTINVOTES_EXTEND))
+			else if (StrEqual(map, VOTE_EXTEND) || StrEqual(map, NATIVEVOTES_EXTEND))
 			{
 				if (g_NativeVotes)
 				{
@@ -1654,7 +1654,7 @@ public Handler_MapVoteMenu(Handle:menu, MenuAction:action, param1, param2)
 						GetMenuItem(menu, item, map, MAX_MAP_NAME_LENGTH);
 					}
 				}
-				while (strcmp(map, VOTE_EXTEND, false) == 0);
+				while (strcmp(map, VOTE_EXTEND, false) == 0 || strcmp(map, NATIVEVOTES_EXTEND, false) == 0);
 				
 				SetNextMap(map);
 				
