@@ -46,7 +46,7 @@
 #undef REQUIRE_EXTENSIONS
 #include <builtinvotes>
 
-#define MCE_VERSION "1.9.6"
+#define MCE_VERSION "1.9.7"
 
 #define BV "builtinvotes"
 #define NV "nativevotes"
@@ -210,16 +210,13 @@ enum WarningType
 #define LINE_SPACER "##linespacer##"
 #define FAILURE_TIMER_LENGTH 5
 
-/* Map name size bumped up to support longer map names */
-#define MAX_MAP_NAME_LENGTH 65
-
 public OnPluginStart()
 {
 	LoadTranslations("mapchooser_extended.phrases");
 	LoadTranslations("basevotes.phrases");
 	LoadTranslations("common.phrases");
 	
-	new arraySize = ByteCountToCells(MAX_MAP_NAME_LENGTH);
+	new arraySize = ByteCountToCells(PLATFORM_MAX_PATH);
 	g_MapList = CreateArray(arraySize);
 	g_NominateList = CreateArray(arraySize);
 	g_NominateOwners = CreateArray(1);
@@ -488,8 +485,8 @@ public OnMapEnd()
 	g_WarningTimer = INVALID_HANDLE;
 	g_RunoffCount = 0;
 	
-	decl String:map[MAX_MAP_NAME_LENGTH];
-	GetCurrentMap(map, MAX_MAP_NAME_LENGTH);
+	decl String:map[PLATFORM_MAX_PATH];
+	GetCurrentMap(map, PLATFORM_MAX_PATH);
 	PushArrayString(g_OldMapList, map);
 				
 	if (GetArraySize(g_OldMapList) > GetConVarInt(g_Cvar_ExcludeMaps))
@@ -507,8 +504,8 @@ public OnClientDisconnect(client)
 		return;
 	}
 	
-	new String:oldmap[MAX_MAP_NAME_LENGTH];
-	GetArrayString(g_NominateList, index, oldmap, MAX_MAP_NAME_LENGTH);
+	new String:oldmap[PLATFORM_MAX_PATH];
+	GetArrayString(g_NominateList, index, oldmap, PLATFORM_MAX_PATH);
 	Call_StartForward(g_NominationsResetForward);
 	Call_PushString(oldmap);
 	Call_PushCell(GetArrayCell(g_NominateOwners, index));
@@ -527,8 +524,8 @@ public Action:Command_SetNextmap(client, args)
 		return Plugin_Handled;
 	}
 
-	decl String:map[MAX_MAP_NAME_LENGTH];
-	GetCmdArg(1, map, MAX_MAP_NAME_LENGTH);
+	decl String:map[PLATFORM_MAX_PATH];
+	GetCmdArg(1, map, PLATFORM_MAX_PATH);
 
 	if (!IsMapValid(map))
 	{
@@ -1045,7 +1042,7 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 	 * like sm_mapvote from the adminmenu in the future.
 	 */
 	 
-	decl String:map[MAX_MAP_NAME_LENGTH];
+	decl String:map[PLATFORM_MAX_PATH];
 	
 	/* No input given - User our internal nominations and maplist */
 	if (inputlist == INVALID_HANDLE)
@@ -1105,7 +1102,7 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 		
 		for (new i=0; i<nominationsToAdd; i++)
 		{
-			GetArrayString(g_NominateList, i, map, MAX_MAP_NAME_LENGTH);
+			GetArrayString(g_NominateList, i, map, PLATFORM_MAX_PATH);
 			
 			if (randomizeList == INVALID_HANDLE)
 			{
@@ -1122,7 +1119,7 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 		/* Clear out the rest of the nominations array */
 		for (new i=nominationsToAdd; i<nominateCount; i++)
 		{
-			GetArrayString(g_NominateList, i, map, MAX_MAP_NAME_LENGTH);
+			GetArrayString(g_NominateList, i, map, PLATFORM_MAX_PATH);
 			
 			/* Notify Nominations that this map is now free */
 			Call_StartForward(g_NominationsResetForward);
@@ -1153,7 +1150,7 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 		
 		while (i < voteSize)
 		{
-			GetArrayString(g_NextMapList, count, map, MAX_MAP_NAME_LENGTH);
+			GetArrayString(g_NextMapList, count, map, PLATFORM_MAX_PATH);
 			count++;
 			
 			//Check if this map is in the nominate list (and thus already in the vote) */
@@ -1189,7 +1186,7 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 			
 			for (new j = 0; j < GetArraySize(randomizeList); j++)
 			{
-				GetArrayString(randomizeList, j, map, MAX_MAP_NAME_LENGTH);
+				GetArrayString(randomizeList, j, map, PLATFORM_MAX_PATH);
 				AddMapItem(map);
 			}
 			
@@ -1213,7 +1210,7 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 		
 		for (new i=0; i<size; i++)
 		{
-			GetArrayString(inputlist, i, map, MAX_MAP_NAME_LENGTH);
+			GetArrayString(inputlist, i, map, PLATFORM_MAX_PATH);
 			
 			if (IsMapValid(map))
 			{
@@ -1330,16 +1327,16 @@ public Handler_MapVoteFinished(Handle:menu,
 			g_HasVoteStarted = false;
 			
 			//Revote is needed
-			new arraySize = ByteCountToCells(MAX_MAP_NAME_LENGTH);
+			new arraySize = ByteCountToCells(PLATFORM_MAX_PATH);
 			new Handle:mapList = CreateArray(arraySize);
 
 			for (new i = 0; i < num_items; i++)
 			{
 				if (item_info[i][VOTEINFO_ITEM_VOTES] == highest_votes)
 				{
-					decl String:map[MAX_MAP_NAME_LENGTH];
+					decl String:map[PLATFORM_MAX_PATH];
 					
-					GetMapItem(menu, item_info[i][VOTEINFO_ITEM_INDEX], map, MAX_MAP_NAME_LENGTH);
+					GetMapItem(menu, item_info[i][VOTEINFO_ITEM_INDEX], map, PLATFORM_MAX_PATH);
 					PushArrayString(mapList, map);
 				}
 				else
@@ -1366,11 +1363,11 @@ public Handler_MapVoteFinished(Handle:menu,
 			g_HasVoteStarted = false;
 			
 			//Revote is needed
-			new arraySize = ByteCountToCells(MAX_MAP_NAME_LENGTH);
+			new arraySize = ByteCountToCells(PLATFORM_MAX_PATH);
 			new Handle:mapList = CreateArray(arraySize);
 
-			decl String:map1[MAX_MAP_NAME_LENGTH];
-			GetMapItem(menu, item_info[0][VOTEINFO_ITEM_INDEX], map1, MAX_MAP_NAME_LENGTH);
+			decl String:map1[PLATFORM_MAX_PATH];
+			GetMapItem(menu, item_info[0][VOTEINFO_ITEM_INDEX], map1, PLATFORM_MAX_PATH);
 
 			PushArrayString(mapList, map1);
 
@@ -1379,8 +1376,8 @@ public Handler_MapVoteFinished(Handle:menu,
 			{
 				if (GetArraySize(mapList) < 2 || item_info[i][VOTEINFO_ITEM_VOTES] == item_info[i - 1][VOTEINFO_ITEM_VOTES])
 				{
-					decl String:map[MAX_MAP_NAME_LENGTH];
-					GetMapItem(menu, item_info[i][VOTEINFO_ITEM_INDEX], map, MAX_MAP_NAME_LENGTH);
+					decl String:map[PLATFORM_MAX_PATH];
+					GetMapItem(menu, item_info[i][VOTEINFO_ITEM_INDEX], map, PLATFORM_MAX_PATH);
 					PushArrayString(mapList, map);
 				}
 				else
@@ -1409,8 +1406,8 @@ public Handler_MapVoteFinished(Handle:menu,
 	Call_StartForward(g_MapVoteEndForward);
 	Call_Finish();
 
-	decl String:map[MAX_MAP_NAME_LENGTH];
-	GetMapItem(menu, item_info[0][VOTEINFO_ITEM_INDEX], map, MAX_MAP_NAME_LENGTH);
+	decl String:map[PLATFORM_MAX_PATH];
+	GetMapItem(menu, item_info[0][VOTEINFO_ITEM_INDEX], map, PLATFORM_MAX_PATH);
 
 	if ((strcmp(map, VOTE_EXTEND, false) == 0) || (strcmp(map, NATIVEVOTES_EXTEND, false) == 0) || (strcmp(map, BUILTINVOTES_EXTEND, false) == 0))
 	{
@@ -1569,10 +1566,10 @@ public Handler_MapVoteMenu(Handle:menu, MenuAction:action, param1, param2)
 		
 		case MenuAction_DisplayItem:
 		{
-			decl String:map[MAX_MAP_NAME_LENGTH], String:buffer[255];
+			decl String:map[PLATFORM_MAX_PATH], String:buffer[255];
 			new mark = GetConVarInt(g_Cvar_MarkCustomMaps);
 			
-			GetMenuItem(menu, param2, map, MAX_MAP_NAME_LENGTH);
+			GetMenuItem(menu, param2, map, PLATFORM_MAX_PATH);
 			
 			if (StrEqual(map, VOTE_EXTEND, false))
 			{
@@ -1628,7 +1625,7 @@ public Handler_MapVoteMenu(Handle:menu, MenuAction:action, param1, param2)
 				}
 				
 				decl item;
-				decl String:map[MAX_MAP_NAME_LENGTH];
+				decl String:map[PLATFORM_MAX_PATH];
 				
 				do
 				{
@@ -1647,11 +1644,11 @@ public Handler_MapVoteMenu(Handle:menu, MenuAction:action, param1, param2)
 					item = GetRandomInt(startInt, count - 1);
 					if (g_NativeVotes)
 					{
-						NativeVotes_GetItem(menu, item, map, MAX_MAP_NAME_LENGTH);
+						NativeVotes_GetItem(menu, item, map, PLATFORM_MAX_PATH);
 					}
 					else
 					{
-						GetMenuItem(menu, item, map, MAX_MAP_NAME_LENGTH);
+						GetMenuItem(menu, item, map, PLATFORM_MAX_PATH);
 					}
 				}
 				while (strcmp(map, VOTE_EXTEND, false) == 0 || strcmp(map, NATIVEVOTES_EXTEND, false) == 0);
@@ -1705,12 +1702,12 @@ public Handler_BuiltinVote(Handle:vote, BuiltinVoteAction:action, param1, param2
 				{
 					new count = GetBuiltinVoteItemCount(vote);
 					decl item;
-					decl String:map[MAX_MAP_NAME_LENGTH];
+					decl String:map[PLATFORM_MAX_PATH];
 					
 					do
 					{
 						item = GetRandomInt(0, count - 1);
-						GetBuiltinVoteItem(vote, item, map, MAX_MAP_NAME_LENGTH);
+						GetBuiltinVoteItem(vote, item, map, PLATFORM_MAX_PATH);
 					}
 					while (strcmp(map, BUILTINVOTES_EXTEND, false) == 0);
 
@@ -1739,11 +1736,11 @@ public Action:Timer_ChangeMap(Handle:hTimer, Handle:dp)
 {
 	g_ChangeMapInProgress = false;
 	
-	new String:map[MAX_MAP_NAME_LENGTH];
+	new String:map[PLATFORM_MAX_PATH];
 	
 	if (dp == INVALID_HANDLE)
 	{
-		if (!GetNextMap(map, MAX_MAP_NAME_LENGTH))
+		if (!GetNextMap(map, PLATFORM_MAX_PATH))
 		{
 			//No passed map and no set nextmap. fail!
 			return Plugin_Stop;	
@@ -1752,7 +1749,7 @@ public Action:Timer_ChangeMap(Handle:hTimer, Handle:dp)
 	else
 	{
 		ResetPack(dp);
-		ReadPackString(dp, map, MAX_MAP_NAME_LENGTH);
+		ReadPackString(dp, map, PLATFORM_MAX_PATH);
 	}
 	
 	ForceChangeLevel(map, "Map Vote");
@@ -1767,10 +1764,10 @@ CreateNextVote()
 		ClearArray(g_NextMapList);
 	}
 	
-	decl String:map[MAX_MAP_NAME_LENGTH];
+	decl String:map[PLATFORM_MAX_PATH];
 	new index, Handle:tempMaps  = CloneArray(g_MapList);
 	
-	GetCurrentMap(map, MAX_MAP_NAME_LENGTH);
+	GetCurrentMap(map, PLATFORM_MAX_PATH);
 	index = FindStringInArray(tempMaps, map);
 	if (index != -1)
 	{
@@ -1781,7 +1778,7 @@ CreateNextVote()
 	{
 		for (new i = 0; i < GetArraySize(g_OldMapList); i++)
 		{
-			GetArrayString(g_OldMapList, i, map, MAX_MAP_NAME_LENGTH);
+			GetArrayString(g_OldMapList, i, map, PLATFORM_MAX_PATH);
 			index = FindStringInArray(tempMaps, map);
 			if (index != -1)
 			{
@@ -1814,7 +1811,7 @@ CreateNextVote()
 	for (new i = 0; i < limit; i++)
 	{
 		new b = GetRandomInt(0, GetArraySize(tempMaps) - 1);
-		GetArrayString(tempMaps, b, map, MAX_MAP_NAME_LENGTH);
+		GetArrayString(tempMaps, b, map, PLATFORM_MAX_PATH);
 		PushArrayString(g_NextMapList, map);
 		RemoveFromArray(tempMaps, b);
 	}
@@ -1844,8 +1841,8 @@ NominateResult:InternalNominateMap(String:map[], bool:force, owner)
 	/* Look to replace an existing nomination by this client - Nominations made with owner = 0 aren't replaced */
 	if (owner && ((index = FindValueInArray(g_NominateOwners, owner)) != -1))
 	{
-		new String:oldmap[MAX_MAP_NAME_LENGTH];
-		GetArrayString(g_NominateList, index, oldmap, MAX_MAP_NAME_LENGTH);
+		new String:oldmap[PLATFORM_MAX_PATH];
+		GetArrayString(g_NominateList, index, oldmap, PLATFORM_MAX_PATH);
 		Call_StartForward(g_NominationsResetForward);
 		Call_PushString(oldmap);
 		Call_PushCell(owner);
@@ -1874,8 +1871,8 @@ NominateResult:InternalNominateMap(String:map[], bool:force, owner)
 	
 	while (GetArraySize(g_NominateList) > GetConVarInt(g_Cvar_IncludeMaps))
 	{
-		new String:oldmap[MAX_MAP_NAME_LENGTH];
-		GetArrayString(g_NominateList, 0, oldmap, MAX_MAP_NAME_LENGTH);
+		new String:oldmap[PLATFORM_MAX_PATH];
+		GetArrayString(g_NominateList, 0, oldmap, PLATFORM_MAX_PATH);
 		Call_StartForward(g_NominationsResetForward);
 		Call_PushString(oldmap);
 		Call_PushCell(GetArrayCell(g_NominateOwners, 0));
@@ -1911,8 +1908,8 @@ bool:InternalRemoveNominationByMap(String:map[])
 {	
 	for (new i = 0; i < GetArraySize(g_NominateList); i++)
 	{
-		new String:oldmap[MAX_MAP_NAME_LENGTH];
-		GetArrayString(g_NominateList, i, oldmap, MAX_MAP_NAME_LENGTH);
+		new String:oldmap[PLATFORM_MAX_PATH];
+		GetArrayString(g_NominateList, i, oldmap, PLATFORM_MAX_PATH);
 
 		if(strcmp(map, oldmap, false) == 0)
 		{
@@ -1955,8 +1952,8 @@ bool:InternalRemoveNominationByOwner(owner)
 
 	if (owner && ((index = FindValueInArray(g_NominateOwners, owner)) != -1))
 	{
-		new String:oldmap[MAX_MAP_NAME_LENGTH];
-		GetArrayString(g_NominateList, index, oldmap, MAX_MAP_NAME_LENGTH);
+		new String:oldmap[PLATFORM_MAX_PATH];
+		GetArrayString(g_NominateList, index, oldmap, PLATFORM_MAX_PATH);
 
 		Call_StartForward(g_NominationsResetForward);
 		Call_PushString(oldmap);
@@ -2015,11 +2012,11 @@ public Native_GetExcludeMapList(Handle:plugin, numParams)
 		return;	
 	}
 	new size = GetArraySize(g_OldMapList);
-	decl String:map[MAX_MAP_NAME_LENGTH];
+	decl String:map[PLATFORM_MAX_PATH];
 	
 	for (new i=0; i<size; i++)
 	{
-		GetArrayString(g_OldMapList, i, map, MAX_MAP_NAME_LENGTH);
+		GetArrayString(g_OldMapList, i, map, PLATFORM_MAX_PATH);
 		PushArrayString(array, map);	
 	}
 	
@@ -2034,11 +2031,11 @@ public Native_GetNominatedMapList(Handle:plugin, numParams)
 	if (maparray == INVALID_HANDLE)
 		return;
 
-	decl String:map[MAX_MAP_NAME_LENGTH];
+	decl String:map[PLATFORM_MAX_PATH];
 
 	for (new i = 0; i < GetArraySize(g_NominateList); i++)
 	{
-		GetArrayString(g_NominateList, i, map, MAX_MAP_NAME_LENGTH);
+		GetArrayString(g_NominateList, i, map, PLATFORM_MAX_PATH);
 		PushArrayString(maparray, map);
 
 		// If the optional parameter for an owner list was passed, then we need to fill that out as well
