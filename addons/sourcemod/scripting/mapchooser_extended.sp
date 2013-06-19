@@ -845,7 +845,7 @@ public CheckWinLimit(winner_score)
 	
 	if (g_Cvar_MatchClinch != INVALID_HANDLE && g_Cvar_Maxrounds != INVALID_HANDLE)
 	{
-		new clinch = GetConVarInt(g_Cvar_MatchClinch);
+		new bool:clinch = GetConVarBool(g_Cvar_MatchClinch);
 		
 		if (clinch)
 		{
