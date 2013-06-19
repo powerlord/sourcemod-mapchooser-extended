@@ -271,45 +271,57 @@ public OnPluginStart()
 	g_Cvar_Maxrounds = FindConVar("mp_maxrounds");
 	g_Cvar_Fraglimit = FindConVar("mp_fraglimit");
 	
+	decl String:folder[64];
+	GetGameFolderName(folder, sizeof(folder));
+
+	if (strcmp(folder, "tf") == 0)
+	{
+		g_Cvar_VoteNextLevel = FindConVar("sv_vote_issue_nextlevel_allowed");
+		g_Cvar_Bonusroundtime = FindConVar("mp_bonusroundtime");			
+	}
+	else if (strcmp(folder, "csgo") == 0)
+	{
+		g_Cvar_VoteNextLevel = FindConVar("mp_endmatch_votenextmap");
+		g_Cvar_GameType = FindConVar("game_type");
+		g_Cvar_GameMode = FindConVar("game_mode");
+		g_Cvar_Bonusroundtime = FindConVar("mp_bonusroundtime");			
+	}
+	else if (strcmp(folder, "dod") == 0)
+	{
+		g_Cvar_Bonusroundtime = FindConVar("dod_bonusroundtime");
+	}
+	else
+	{
+		g_Cvar_Bonusroundtime = FindConVar("mp_bonusroundtime");			
+	}
+
 	if (g_Cvar_Winlimit != INVALID_HANDLE || g_Cvar_Maxrounds != INVALID_HANDLE)
 	{
-		decl String:folder[64];
-		GetGameFolderName(folder, sizeof(folder));
-
 		if (strcmp(folder, "tf") == 0)
 		{
 			HookEvent("teamplay_win_panel", Event_TeamPlayWinPanel);
 			HookEvent("teamplay_restart_round", Event_TFRestartRound);
 			HookEvent("arena_win_panel", Event_TeamPlayWinPanel);
 			HookEvent("pve_win_panel", Event_MvMWinPanel);
-			g_Cvar_VoteNextLevel = FindConVar("sv_vote_issue_nextlevel_allowed");
-			g_Cvar_Bonusroundtime = FindConVar("mp_bonusroundtime");			
 		}
 		else if (strcmp(folder, "nucleardawn") == 0)
 		{
 			HookEvent("round_win", Event_RoundEnd);
-			g_Cvar_Bonusroundtime = FindConVar("mp_bonusroundtime");			
 		}
 		else if (strcmp(folder, "csgo") == 0)
 		{
 			HookEvent("round_end", Event_RoundEnd);
 			HookEvent("cs_intermission", Event_Intermission);
 			HookEvent("announce_phase_end", Event_PhaseEnd);
-			g_Cvar_VoteNextLevel = FindConVar("mp_endmatch_votenextmap");
-			g_Cvar_GameType = FindConVar("game_type");
-			g_Cvar_GameMode = FindConVar("game_mode");
-			g_Cvar_Bonusroundtime = FindConVar("mp_bonusroundtime");			
 			g_Cvar_MatchClinch = FindConVar("mp_match_can_clinch");
 		}
 		else if (strcmp(folder, "dod") == 0)
 		{
 			HookEvent("dod_round_win", Event_RoundEnd);
-			g_Cvar_Bonusroundtime = FindConVar("dod_bonusroundtime");
 		}
 		else
 		{
 			HookEvent("round_end", Event_RoundEnd);
-			g_Cvar_Bonusroundtime = FindConVar("mp_bonusroundtime");			
 		}
 	}
 	
@@ -410,7 +422,7 @@ public OnMapStart()
 	if (strcmp(folder, "tf") == 0 && GameRules_GetProp("m_bPlayingMannVsMachine"))
 	{
 		g_RoundCounting = RoundCounting_MvM;
-		g_ObjectiveEnt = FindEntityByClassname(-1, "tf_objective_resource");
+		g_ObjectiveEnt = EntIndexToEntRef(FindEntityByClassname(-1, "tf_objective_resource"));
 	}
 	else if (strcmp(folder, "csgo") == 0 && GetConVarInt(g_Cvar_GameType) == GameType_GunGame &&
 		GetConVarInt(g_Cvar_GameMode) == GunGameMode_ArmsRace)
@@ -726,8 +738,12 @@ public Event_MvMWinPanel(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	if (GetEventInt(event, "winning_team") == 2)
 	{
-		g_TotalRounds = GetEntProp(g_ObjectiveEnt, Prop_Send, "m_nMannVsMachineWaveCount");
-		CheckMaxRounds(g_TotalRounds);
+		new objectiveEnt = EntRefToEntIndex(g_ObjectiveEnt);
+		if (objectiveEnt != INVALID_ENT_REFERENCE)
+		{
+			g_TotalRounds = GetEntProp(g_ObjectiveEnt, Prop_Send, "m_nMannVsMachineWaveCount");
+			CheckMaxRounds(g_TotalRounds);
+		}
 	}
 }
 
