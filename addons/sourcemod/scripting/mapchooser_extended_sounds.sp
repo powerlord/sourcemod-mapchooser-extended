@@ -14,7 +14,7 @@
 #define CONFIG_FILE "configs/mapchooser_extended/sounds.cfg"
 #define CONFIG_DIRECTORY "configs/mapchooser_extended/sounds"
 
-#define SET_NAME_MAX_LENGTH 32
+#define SET_NAME_MAX_LENGTH 64
 
 // 0-60, even though we don't ever call 0
 // Counter-intuitive note: This array has 61 elements, not 60

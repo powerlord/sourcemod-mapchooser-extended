@@ -41,9 +41,6 @@
 
 #define MCE_VERSION "1.9.7"
 
-/* Map name size bumped up to support longer map names */
-#define MAP_NAME_LENGTH 65
-
 public Plugin:myinfo =
 {
 	name = "Rock The Vote Extended",
@@ -271,7 +268,7 @@ StartRTV()
 	if (EndOfMapVoteEnabled() && HasEndOfMapVoteFinished())
 	{
 		/* Change right now then */
-		new String:map[MAP_NAME_LENGTH];
+		new String:map[PLATFORM_MAX_PATH];
 		if (GetNextMap(map, sizeof(map)))
 		{
 			PrintToChatAll("[SM] %t", "Changing Maps", map);
@@ -313,7 +310,7 @@ public Action:Timer_ChangeMap(Handle:hTimer)
 	
 	LogMessage("RTV changing map manually");
 	
-	new String:map[MAP_NAME_LENGTH];
+	new String:map[PLATFORM_MAX_PATH];
 	if (GetNextMap(map, sizeof(map)))
 	{	
 		ForceChangeLevel(map, "RTV after mapvote");

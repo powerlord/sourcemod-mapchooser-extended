@@ -40,9 +40,6 @@
 
 #define MCE_VERSION "1.9.7"
 
-/* Map name size bumped up to support longer map names */
-#define MAP_NAME_LENGTH 65
-
 public Plugin:myinfo =
 {
 	name = "Map Nominations Extended",
@@ -77,7 +74,7 @@ public OnPluginStart()
 	LoadTranslations("basetriggers.phrases"); // for Next Map phrase
 	LoadTranslations("mapchooser_extended.phrases");
 	
-	new arraySize = ByteCountToCells(MAP_NAME_LENGTH);	
+	new arraySize = ByteCountToCells(PLATFORM_MAX_PATH);	
 	g_MapList = CreateArray(arraySize);
 	
 	g_Cvar_ExcludeOld = CreateConVar("sm_nominate_excludeold", "1", "Specifies if the current map should be excluded from the Nominations list", 0, true, 0.00, true, 1.0);
@@ -147,7 +144,7 @@ public Action:Command_Addmap(client, args)
 		return Plugin_Handled;
 	}
 	
-	decl String:mapname[MAP_NAME_LENGTH];
+	decl String:mapname[PLATFORM_MAX_PATH];
 	GetCmdArg(1, mapname, sizeof(mapname));
 
 	
@@ -226,7 +223,7 @@ public Action:Command_Nominate(client, args)
 		return Plugin_Handled;
 	}
 	
-	decl String:mapname[MAP_NAME_LENGTH];
+	decl String:mapname[PLATFORM_MAX_PATH];
 	GetCmdArg(1, mapname, sizeof(mapname));
 	
 	new status;
@@ -303,14 +300,14 @@ BuildMapMenu()
 	
 	g_MapMenu = CreateMenu(Handler_MapSelectMenu, MENU_ACTIONS_DEFAULT|MenuAction_DrawItem|MenuAction_DisplayItem);
 
-	decl String:map[MAP_NAME_LENGTH];
+	decl String:map[PLATFORM_MAX_PATH];
 	
 	new Handle:excludeMaps = INVALID_HANDLE;
 	decl String:currentMap[32];
 	
 	if (GetConVarBool(g_Cvar_ExcludeOld))
 	{	
-		excludeMaps = CreateArray(ByteCountToCells(MAP_NAME_LENGTH));
+		excludeMaps = CreateArray(ByteCountToCells(PLATFORM_MAX_PATH));
 		GetExcludeMapList(excludeMaps);
 	}
 	
@@ -361,7 +358,7 @@ public Handler_MapSelectMenu(Handle:menu, MenuAction:action, param1, param2)
 	{
 		case MenuAction_Select:
 		{
-			decl String:map[MAP_NAME_LENGTH], String:name[MAX_NAME_LENGTH];
+			decl String:map[PLATFORM_MAX_PATH], String:name[MAX_NAME_LENGTH];
 			GetMenuItem(menu, param2, map, sizeof(map));		
 			
 			GetClientName(param1, name, MAX_NAME_LENGTH);
@@ -393,7 +390,7 @@ public Handler_MapSelectMenu(Handle:menu, MenuAction:action, param1, param2)
 		
 		case MenuAction_DrawItem:
 		{
-			decl String:map[MAP_NAME_LENGTH];
+			decl String:map[PLATFORM_MAX_PATH];
 			GetMenuItem(menu, param2, map, sizeof(map));
 			
 			new status;
@@ -415,7 +412,7 @@ public Handler_MapSelectMenu(Handle:menu, MenuAction:action, param1, param2)
 		
 		case MenuAction_DisplayItem:
 		{
-			decl String:map[MAP_NAME_LENGTH];
+			decl String:map[PLATFORM_MAX_PATH];
 			GetMenuItem(menu, param2, map, sizeof(map));
 			
 			new mark = GetConVarInt(g_Cvar_MarkCustomMaps);
@@ -502,7 +499,7 @@ stock bool:IsNominateAllowed(client)
 		
 		case CanNominate_No_VoteComplete:
 		{
-			new String:map[MAP_NAME_LENGTH];
+			new String:map[PLATFORM_MAX_PATH];
 			GetNextMap(map, sizeof(map));
 			ReplyToCommand(client, "[NE] %t", "Next Map", map);
 			return false;
