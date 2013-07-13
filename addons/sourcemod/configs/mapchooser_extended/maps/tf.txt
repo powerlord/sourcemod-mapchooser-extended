@@ -57,3 +57,5 @@ mvm_coaltown
 mvm_decoy
 koth_lakeside_event
 mvm_bigrock
+cp_process_final
+cp_standin_final
