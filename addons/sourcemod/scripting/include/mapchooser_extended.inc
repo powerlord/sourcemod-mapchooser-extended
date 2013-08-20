@@ -37,6 +37,7 @@
   #endinput
 #endif
 #define _mapchooser_extended_included_
+#include <mapchooser>
 
 // MCE 1.9 series
 
@@ -75,7 +76,7 @@ forward OnMapVoteStart();
 /**
  * Called whenever vote ends
  */
-forward OnMapVoteEnd();
+forward OnMapVoteEnd(String:map[]);
 
 /**
  * Is a map on the current game's official list?

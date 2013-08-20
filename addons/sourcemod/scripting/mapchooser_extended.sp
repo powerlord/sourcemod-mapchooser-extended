@@ -344,7 +344,7 @@ public OnPluginStart()
 
 	//MapChooser Extended Forwards
 	g_MapVoteStartForward = CreateGlobalForward("OnMapVoteStart", ET_Ignore); // Deprecated
-	g_MapVoteEndForward = CreateGlobalForward("OnMapVoteEnd", ET_Ignore);
+	g_MapVoteEndForward = CreateGlobalForward("OnMapVoteEnd", ET_Ignore, Param_String);
 	g_MapVoteWarningStartForward = CreateGlobalForward("OnMapVoteWarningStart", ET_Ignore);
 	g_MapVoteWarningTickForward = CreateGlobalForward("OnMapVoteWarningTick", ET_Ignore, Param_Cell);
 	g_MapVoteRunoffStartForward = CreateGlobalForward("OnMapVoteRunnoffWarningStart", ET_Ignore);
@@ -1419,11 +1419,12 @@ public Handler_MapVoteFinished(Handle:menu,
 	
 	// No revote needed, continue as normal.
 	
-	Call_StartForward(g_MapVoteEndForward);
-	Call_Finish();
-
 	decl String:map[PLATFORM_MAX_PATH];
 	GetMapItem(menu, item_info[0][VOTEINFO_ITEM_INDEX], map, PLATFORM_MAX_PATH);
+
+	Call_StartForward(g_MapVoteEndForward);
+	Call_PushString(map);
+	Call_Finish();
 
 	if ((strcmp(map, VOTE_EXTEND, false) == 0) || (strcmp(map, NATIVEVOTES_EXTEND, false) == 0) || (strcmp(map, BUILTINVOTES_EXTEND, false) == 0))
 	{
