@@ -76,7 +76,7 @@ forward OnMapVoteStart();
 /**
  * Called whenever vote ends
  */
-forward OnMapVoteEnd(String:map[]);
+forward OnMapVoteEnd(const String:map[]);
 
 /**
  * Is a map on the current game's official list?
