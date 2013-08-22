@@ -1671,6 +1671,7 @@ public Handler_MapVoteMenu(Handle:menu, MenuAction:action, param1, param2)
 				while (strcmp(map, VOTE_EXTEND, false) == 0 || strcmp(map, NATIVEVOTES_EXTEND, false) == 0);
 				
 				SetNextMap(map);
+				g_MapVoteCompleted = true;
 				
 				if (g_NativeVotes)
 				{
@@ -1693,7 +1694,6 @@ public Handler_MapVoteMenu(Handle:menu, MenuAction:action, param1, param2)
 			}
 			
 			g_HasVoteStarted = false;
-			g_MapVoteCompleted = true;
 		}
 	}
 	
