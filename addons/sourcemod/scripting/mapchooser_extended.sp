@@ -43,12 +43,8 @@
 #undef REQUIRE_PLUGIN
 #include <nativevotes>
 
-#undef REQUIRE_EXTENSIONS
-#include <builtinvotes>
+#define MCE_VERSION "1.10.0"
 
-#define MCE_VERSION "1.9.7"
-
-#define BV "builtinvotes"
 #define NV "nativevotes"
 
 enum RoundCounting
@@ -173,7 +169,6 @@ new Handle:g_MapVoteRunoffStartForward = INVALID_HANDLE;
 /* Mapchooser Extended Globals */
 new g_RunoffCount = 0;
 new g_mapOfficialFileSerial = -1;
-new bool:g_BuiltinVotes = false;
 new bool:g_NativeVotes = false;
 new String:g_GameModName[64];
 new bool:g_WarningInProgress = false;
@@ -253,7 +248,7 @@ public OnPluginStart()
 	g_Cvar_StartTimePercentEnable = CreateConVar("mce_start_percent_enable", "0", "Enable or Disable percentage calculations when to start vote.", _, true, 0.0, true, 1.0);
 	g_Cvar_WarningTime = CreateConVar("mce_warningtime", "15.0", "Warning time in seconds.", _, true, 0.0, true, 60.0);
 	g_Cvar_RunOffWarningTime = CreateConVar("mce_runoffvotewarningtime", "5.0", "Warning time for runoff vote in seconds.", _, true, 0.0, true, 30.0);
-	g_Cvar_MenuStyle = CreateConVar("mce_menustyle", "0", "Menu Style.  0 is the game's default, 1 is the older Valve style that requires you to press Escape to see the menu, 2 is the newer 1-9 button Voice Command style, unavailable in some games. Ignored on TF2 if NativeVotes Plugin or BuiltinVotes Extension is loaded.", _, true, 0.0, true, 2.0);
+	g_Cvar_MenuStyle = CreateConVar("mce_menustyle", "0", "Menu Style.  0 is the game's default, 1 is the older Valve style that requires you to press Escape to see the menu, 2 is the newer 1-9 button Voice Command style, unavailable in some games. Ignored on TF2 if NativeVotes Plugin is loaded.", _, true, 0.0, true, 2.0);
 	g_Cvar_TimerLocation = CreateConVar("mce_warningtimerlocation", "0", "Location for the warning timer text. 0 is HintBox, 1 is Center text, 2 is Chat.  Defaults to HintBox.", _, true, 0.0, true, 2.0);
 	g_Cvar_MarkCustomMaps = CreateConVar("mce_markcustommaps", "1", "Mark custom maps in the vote list. 0 = Disabled, 1 = Mark with *, 2 = Mark with phrase.", _, true, 0.0, true, 2.0);
 	g_Cvar_ExtendPosition = CreateConVar("mce_extendposition", "0", "Position of Extend/Don't Change options. 0 = at end, 1 = at start.", _, true, 0.0, true, 1.0);
@@ -381,7 +376,6 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 public OnAllPluginsLoaded()
 {
 	g_NativeVotes = LibraryExists(NV) && NativeVotes_IsVoteTypeSupported(NativeVotesType_NextLevelMult);
-	g_BuiltinVotes = LibraryExists(BV) && StrEqual(g_GameModName, "tf");
 }
 
 public OnLibraryAdded(const String:name[])
@@ -390,12 +384,6 @@ public OnLibraryAdded(const String:name[])
 	{
 		g_NativeVotes = true;
 	}
-	
-	if (StrEqual(name, BV) && StrEqual(g_GameModName, "tf"))
-	{
-		g_BuiltinVotes = true;
-	}
-	
 }
 
 public OnLibraryRemoved(const String:name[])
@@ -403,11 +391,6 @@ public OnLibraryRemoved(const String:name[])
 	if (StrEqual(name, NV))
 	{
 		g_NativeVotes = false;
-	}
-	
-	if (StrEqual(name, BV))
-	{
-		g_BuiltinVotes = false;
 	}
 }
 
@@ -954,10 +937,10 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 	g_WaitingForVote = true;
 	g_WarningInProgress = false;
  
-	// Check if a builtinvote is in progress first
-	// BuiltinVotes running at the same time as a regular vote can cause hintbox problems,
+	// Check if a nativevotes vots is in progress first
+	// NativeVotes running at the same time as a regular vote can cause hintbox problems,
 	// so always check for a standard vote
-	if (IsVoteInProgress() || (g_NativeVotes && NativeVotes_IsVoteInProgress()) || (g_BuiltinVotes && IsBuiltinVoteInProgress()) )
+	if (IsVoteInProgress() || (g_NativeVotes && NativeVotes_IsVoteInProgress()))
 	{
 		// Can't start a vote, try again in 5 seconds.
 		//g_RetryTimer = CreateTimer(5.0, Timer_StartMapVote, _, TIMER_FLAG_NO_MAPCHANGE);
@@ -1000,11 +983,8 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 		g_VoteMenu = NativeVotes_Create(Handler_MapVoteMenu, NativeVotesType_NextLevelMult, MenuAction_End | MenuAction_VoteCancel);
 		NativeVotes_SetResultCallback(g_VoteMenu, Handler_NativeVoteFinished);
 	}
-	else if (g_BuiltinVotes)
+	else
 	{
-		g_VoteMenu = CreateBuiltinVote(Handler_BuiltinVote, BuiltinVoteType_NextLevelMult, BuiltinVoteAction_End | BuiltinVoteAction_Cancel);
-		SetBuiltinVoteResultCallback(g_VoteMenu, Handler_MapVoteFinished);
-	} else {
 		new Handle:menuStyle = GetMenuStyleHandle(MenuStyle:GetConVarInt(g_Cvar_MenuStyle));
 		
 		if (menuStyle != INVALID_HANDLE)
@@ -1074,17 +1054,9 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 		new voteSize = GetConVarInt(g_Cvar_IncludeMaps);
 		
 		// New in 1.9.5 to let us bump up the included maps count
-		if (g_NativeVotes || g_BuiltinVotes)
+		if (g_NativeVotes)
 		{
-			new max = 0;
-			if (g_NativeVotes)
-			{
-				max = NativeVotes_GetMaxItems();
-			}
-			else
-			{
-				max = GetBuiltinVoteMaxItems();
-			}
+			new max = NativeVotes_GetMaxItems();
 			
 			if (max < voteSize)
 			{
@@ -1094,7 +1066,7 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 		
 		// The if and else if could be combined, but it looks extremely messy
 		// This is a hack to lower the vote menu size by 1 when Don't Change or Extend Map should appear
-		if (g_NativeVotes || g_BuiltinVotes)
+		if (g_NativeVotes)
 		{
 			if ((when == MapChange_Instant || when == MapChange_RoundEnd) && GetConVarBool(g_Cvar_DontChange))
 			{
@@ -1239,10 +1211,6 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 				{
 					NativeVotes_AddItem(g_VoteMenu, NATIVEVOTES_EXTEND, NATIVEVOTES_EXTEND);
 				}
-				else if (g_BuiltinVotes)
-				{
-					AddBuiltinVoteItem(g_VoteMenu, BUILTINVOTES_EXTEND, BUILTINVOTES_EXTEND);
-				}
 				else
 				{
 					AddMenuItem(g_VoteMenu, VOTE_DONTCHANGE, "Don't Change");
@@ -1253,10 +1221,6 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 				if (g_NativeVotes)
 				{
 					NativeVotes_AddItem(g_VoteMenu, NATIVEVOTES_EXTEND, NATIVEVOTES_EXTEND);
-				}
-				else if (g_BuiltinVotes)
-				{
-					AddBuiltinVoteItem(g_VoteMenu, BUILTINVOTES_EXTEND, BUILTINVOTES_EXTEND);
 				}
 				else
 				{
@@ -1272,10 +1236,6 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 	if (g_NativeVotes)
 	{
 		NativeVotes_DisplayToAll(g_VoteMenu, voteDuration);
-	}
-	else if (g_BuiltinVotes)
-	{
-		DisplayBuiltinVoteToAll(g_VoteMenu, voteDuration);
 	}
 	else
 	{
@@ -1365,10 +1325,6 @@ public Handler_MapVoteFinished(Handle:menu,
 			{
 				NativeVotes_DisplayFail(menu, NativeVotesFail_NotEnoughVotes);
 			}
-			else if (g_BuiltinVotes)
-			{
-				DisplayBuiltinVoteFail(menu, BuiltinVoteFail_NotEnoughVotes);
-			}
 			
 			PrintToChatAll("[MCE] %t", "Tie Vote", GetArraySize(mapList));
 			SetupWarningTimer(WarningType_Revote, MapChange:g_ChangeTime, mapList);
@@ -1406,10 +1362,6 @@ public Handler_MapVoteFinished(Handle:menu,
 			{
 				NativeVotes_DisplayFail(menu, NativeVotesFail_NotEnoughVotes);
 			}
-			else if (g_BuiltinVotes)
-			{
-				DisplayBuiltinVoteFail(menu, BuiltinVoteFail_NotEnoughVotes);
-			}
 			
 			PrintToChatAll("[MCE] %t", "Revote Is Needed", required_percent);
 			SetupWarningTimer(WarningType_Revote, MapChange:g_ChangeTime, mapList);
@@ -1426,7 +1378,7 @@ public Handler_MapVoteFinished(Handle:menu,
 	Call_PushString(map);
 	Call_Finish();
 
-	if ((strcmp(map, VOTE_EXTEND, false) == 0) || (strcmp(map, NATIVEVOTES_EXTEND, false) == 0) || (strcmp(map, BUILTINVOTES_EXTEND, false) == 0))
+	if ((strcmp(map, VOTE_EXTEND, false) == 0) || (strcmp(map, NATIVEVOTES_EXTEND, false) == 0))
 	{
 		g_Extends++;
 		
@@ -1470,10 +1422,6 @@ public Handler_MapVoteFinished(Handle:menu,
 		{
 			NativeVotes_DisplayPassEx(menu, NativeVotesPass_Extend);
 		}
-		else if (g_BuiltinVotes)
-		{
-			DisplayBuiltinVotePass2(menu, TRANSLATION_TF2_VOTE_NEXTLEVEL_EXTEND_PASSED);
-		}
 		
 		PrintToChatAll("[MCE] %t", "Current Map Extended", RoundToFloor(float(item_info[0][VOTEINFO_ITEM_VOTES])/float(num_votes)*100), num_votes);
 		LogAction(-1, -1, "Voting for next map has finished. The current map has been extended.");
@@ -1489,10 +1437,6 @@ public Handler_MapVoteFinished(Handle:menu,
 		if (g_NativeVotes)
 		{
 			NativeVotes_DisplayPassEx(menu, NativeVotesPass_Extend);
-		}
-		else if (g_BuiltinVotes)
-		{
-			DisplayBuiltinVotePass2(menu, TRANSLATION_TF2_VOTE_NEXTLEVEL_EXTEND_PASSED);
 		}
 		
 		PrintToChatAll("[MCE] %t", "Current Map Stays", RoundToFloor(float(item_info[0][VOTEINFO_ITEM_VOTES])/float(num_votes)*100), num_votes);
@@ -1511,10 +1455,6 @@ public Handler_MapVoteFinished(Handle:menu,
 			{
 				NativeVotes_DisplayPass(menu, map);
 			}
-			else if (g_BuiltinVotes)
-			{
-				DisplayBuiltinVotePass(menu, map);
-			}
 		}
 		else if (g_ChangeTime == MapChange_Instant)
 		{
@@ -1526,10 +1466,6 @@ public Handler_MapVoteFinished(Handle:menu,
 			{
 				NativeVotes_DisplayPassEx(menu, NativeVotesPass_ChgLevel, map);
 			}
-			else if (g_BuiltinVotes)
-			{
-				DisplayBuiltinVotePass2(menu, TRANSLATION_TF2_VOTE_CHANGELEVEL_PASSED, map);
-			}
 		}
 		else // MapChange_RoundEnd
 		{
@@ -1539,10 +1475,6 @@ public Handler_MapVoteFinished(Handle:menu,
 			if (g_NativeVotes)
 			{
 				NativeVotes_DisplayPass(menu, map);
-			}
-			else if (g_BuiltinVotes)
-			{
-				DisplayBuiltinVotePass(menu, map);
 			}
 		}
 		
@@ -1700,55 +1632,6 @@ public Handler_MapVoteMenu(Handle:menu, MenuAction:action, param1, param2)
 	return 0;
 }
 
-public Handler_BuiltinVote(Handle:vote, BuiltinVoteAction:action, param1, param2)
-{
-	switch(action)
-	{
-		case BuiltinVoteAction_End:
-		{
-			g_VoteMenu = INVALID_HANDLE;
-			CloseHandle(vote);
-		}
-		
-		case BuiltinVoteAction_Cancel:
-		{
-			// If we receive 0 votes, pick at random
-			if (BuiltinVoteFailReason:param1 == BuiltinVoteFail_NotEnoughVotes)
-			{
-				if (GetConVarBool(g_Cvar_NoVoteMode))
-				{
-					new count = GetBuiltinVoteItemCount(vote);
-					decl item;
-					decl String:map[PLATFORM_MAX_PATH];
-					
-					do
-					{
-						item = GetRandomInt(0, count - 1);
-						GetBuiltinVoteItem(vote, item, map, PLATFORM_MAX_PATH);
-					}
-					while (strcmp(map, BUILTINVOTES_EXTEND, false) == 0);
-
-					DisplayBuiltinVotePass(vote, map);
-					
-					SetNextMap(map);
-				}
-				else
-				{
-					DisplayBuiltinVoteFail(vote, BuiltinVoteFail_NotEnoughVotes);
-				}
-			}
-			else
-			{
-				// We were actually cancelled.
-				DisplayBuiltinVoteFail(vote, BuiltinVoteFail_Generic);
-			}
-
-			g_HasVoteStarted = false;
-			g_MapVoteCompleted = true;
-		}
-	}
-}
-
 public Action:Timer_ChangeMap(Handle:hTimer, Handle:dp)
 {
 	g_ChangeMapInProgress = false;
@@ -1807,17 +1690,9 @@ CreateNextVote()
 	new limit = (GetConVarInt(g_Cvar_IncludeMaps) < GetArraySize(tempMaps) ? GetConVarInt(g_Cvar_IncludeMaps) : GetArraySize(tempMaps));
 	
 	// New in 1.9.5 to let us bump up the included maps count
-	if (g_NativeVotes || g_BuiltinVotes)
+	if (g_NativeVotes)
 	{
-		new max = 0;
-		if (g_NativeVotes)
-		{
-			max = NativeVotes_GetMaxItems();
-		}
-		else
-		{
-			max = GetBuiltinVoteMaxItems();
-		}
+		new max = NativeVotes_GetMaxItems();
 		
 		if (max < limit)
 		{
@@ -2245,7 +2120,7 @@ public Native_CanNominate(Handle:plugin, numParams)
 
 stock AddMapItem(const String:map[])
 {
-	if (g_NativeVotes || g_BuiltinVotes)
+	if (g_NativeVotes)
 	{
 		new mark = GetConVarInt(g_Cvar_MarkCustomMaps);
 
@@ -2269,25 +2144,11 @@ stock AddMapItem(const String:map[])
 					strcopy(buffer, sizeof(buffer), map);
 				}
 			}
-			if (g_NativeVotes)
-			{
-				NativeVotes_AddItem(g_VoteMenu, map, buffer);
-			}
-			else
-			{
-				AddBuiltinVoteItem(g_VoteMenu, map, buffer);
-			}
+			NativeVotes_AddItem(g_VoteMenu, map, buffer);
 		}
 		else
 		{
-			if (g_NativeVotes)
-			{
-				NativeVotes_AddItem(g_VoteMenu, map, map);
-			}
-			else
-			{
-				AddBuiltinVoteItem(g_VoteMenu, map, map);
-			}
+			NativeVotes_AddItem(g_VoteMenu, map, map);
 		}
 	}
 	else
@@ -2301,11 +2162,6 @@ stock GetMapItem(Handle:menu, position, String:map[], mapLen)
 	if (g_NativeVotes)
 	{
 		NativeVotes_GetItem(menu, position, map, mapLen);
-	}
-	else if (g_BuiltinVotes)
-	{
-		GetBuiltinVoteItem(menu, position, map, mapLen);
-		
 	}
 	else
 	{
@@ -2325,11 +2181,6 @@ stock AddExtendToMenu(Handle:menu, MapChange:when)
 			// Built-in votes don't have "Don't Change", send Extend instead
 			NativeVotes_AddItem(menu, NATIVEVOTES_EXTEND, NATIVEVOTES_EXTEND);
 		}
-		else if (g_BuiltinVotes)
-		{
-			// Built-in votes doesn't have "Don't Change", send Extend instead
-			AddBuiltinVoteItem(menu, BUILTINVOTES_EXTEND, BUILTINVOTES_EXTEND);
-		}
 		else
 		{
 			AddMenuItem(menu, VOTE_DONTCHANGE, "Don't Change");
@@ -2340,10 +2191,6 @@ stock AddExtendToMenu(Handle:menu, MapChange:when)
 		if (g_NativeVotes)
 		{
 			NativeVotes_AddItem(menu, NATIVEVOTES_EXTEND, NATIVEVOTES_EXTEND);
-		}
-		else if (g_BuiltinVotes)
-		{
-			AddBuiltinVoteItem(menu, BUILTINVOTES_EXTEND, BUILTINVOTES_EXTEND);
 		}
 		else
 		{
