@@ -39,6 +39,7 @@
 #include "include/mapchooser_extended"
 #include <nextmap>
 #include <sdktools>
+#include <colors>
 
 #undef REQUIRE_PLUGIN
 #include <nativevotes>
@@ -515,7 +516,7 @@ public Action:Command_SetNextmap(client, args)
 {
 	if (args < 1)
 	{
-		ReplyToCommand(client, "[MCE] Usage: sm_setnextmap <map>");
+		CReplyToCommand(client, "[MCE] Usage: sm_setnextmap <map>");
 		return Plugin_Handled;
 	}
 
@@ -524,7 +525,7 @@ public Action:Command_SetNextmap(client, args)
 
 	if (!IsMapValid(map))
 	{
-		ReplyToCommand(client, "[MCE] %t", "Map was not found", map);
+		CReplyToCommand(client, "[MCE] %t", "Map was not found", map);
 		return Plugin_Handled;
 	}
 
@@ -626,7 +627,7 @@ public Action:Timer_StartMapVote(Handle:timer, Handle:data)
 	if (timePassed == 0 || !GetConVarBool(g_Cvar_HideTimer))
 	{
 		new TimerLocation:timerLocation = TimerLocation:GetConVarInt(g_Cvar_TimerLocation);
-
+		
 		switch(timerLocation)
 		{
 			case TimerLocation_Center:
@@ -945,7 +946,7 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 		// Can't start a vote, try again in 5 seconds.
 		//g_RetryTimer = CreateTimer(5.0, Timer_StartMapVote, _, TIMER_FLAG_NO_MAPCHANGE);
 		
-		PrintToChatAll("[MCE] %t", "Cannot Start Vote", FAILURE_TIMER_LENGTH);
+		CPrintToChatAll("[MCE] %t", "Cannot Start Vote", FAILURE_TIMER_LENGTH);
 		new Handle:data;
 		g_RetryTimer = CreateDataTimer(1.0, Timer_StartMapVote, data, TIMER_FLAG_NO_MAPCHANGE | TIMER_REPEAT);
 		
@@ -980,7 +981,7 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 	
 	if (g_NativeVotes)
 	{
-		g_VoteMenu = NativeVotes_Create(Handler_MapVoteMenu, NativeVotesType_NextLevelMult, MenuAction_End | MenuAction_VoteCancel);
+		g_VoteMenu = NativeVotes_Create(Handler_MapVoteMenu, NativeVotesType_NextLevelMult, MenuAction_End | MenuAction_VoteCancel | MenuAction_Display | MenuAction_DisplayItem);
 		NativeVotes_SetResultCallback(g_VoteMenu, Handler_NativeVoteFinished);
 	}
 	else
@@ -1043,13 +1044,6 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 	/* No input given - User our internal nominations and maplist */
 	if (inputlist == INVALID_HANDLE)
 	{
-		new Handle:randomizeList = INVALID_HANDLE;
-		
-		if (GetConVarBool(g_Cvar_RandomizeNominations))
-		{
-			randomizeList = CloneArray(g_NominateList);
-		}
-		
 		new nominateCount = GetArraySize(g_NominateList);
 		new voteSize = GetConVarInt(g_Cvar_IncludeMaps);
 		
@@ -1077,25 +1071,35 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 				voteSize--;
 			}
 		}
-
+		
 		/* Smaller of the two - It should be impossible for nominations to exceed the size though (cvar changed mid-map?) */
 		new nominationsToAdd = nominateCount >= voteSize ? voteSize : nominateCount;
 		
 		new bool:extendFirst = GetConVarBool(g_Cvar_ExtendPosition);
-
+		
 		if (extendFirst)
 		{
 			AddExtendToMenu(g_VoteMenu, when);
+		}
+		
+		// Moved in 1.10.  I figure this works better than dragging extra handles around
+		if (GetConVarBool(g_Cvar_RandomizeNominations))
+		{
+			new start = GetArraySize(g_NominateList) - 1;
+			// Fisher-Yates Shuffle
+			for (new i = start; i >= 1; --i)
+			{
+				new pos = GetRandomInt(0, i);
+				SwapArrayItems(g_NominateList, pos, i);
+			}
 		}
 		
 		for (new i=0; i<nominationsToAdd; i++)
 		{
 			GetArrayString(g_NominateList, i, map, PLATFORM_MAX_PATH);
 			
-			if (randomizeList == INVALID_HANDLE)
-			{
-				AddMapItem(map);
-			}
+			AddMapItem(map);
+			RemoveStringFromArray(g_NextMapList, map);
 			
 			/* Notify Nominations that this map is now free */
 			Call_StartForward(g_NominationsResetForward);
@@ -1108,6 +1112,7 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 		for (new i=nominationsToAdd; i<nominateCount; i++)
 		{
 			GetArrayString(g_NominateList, i, map, PLATFORM_MAX_PATH);
+			/* These maps shouldn't be excluded from the vote as they weren't really nominated at all */
 			
 			/* Notify Nominations that this map is now free */
 			Call_StartForward(g_NominationsResetForward);
@@ -1141,20 +1146,9 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 			GetArrayString(g_NextMapList, count, map, PLATFORM_MAX_PATH);
 			count++;
 			
-			//Check if this map is in the nominate list (and thus already in the vote) */
-			if (FindStringInArray(g_NominateList, map) == -1)
-			{
-				/* Insert the map and increment our count */
-				if (randomizeList == INVALID_HANDLE)
-				{
-					AddMapItem(map);
-				}
-				else
-				{
-					PushArrayString(randomizeList, map);
-				}
-				i++;
-			}
+			/* Insert the map and increment our count */
+			AddMapItem(map);
+			i++;
 			
 			if (count >= availableMaps)
 			{
@@ -1163,30 +1157,11 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 			}
 		}
 		
-		if (randomizeList != INVALID_HANDLE)
-		{
-			// Fisher-Yates Shuffle
-			for (new j = GetArraySize(randomizeList) - 1; j >= 1; j--)
-			{
-				new k = GetRandomInt(0, j);
-				SwapArrayItems(randomizeList, j, k);
-			}
-			
-			for (new j = 0; j < GetArraySize(randomizeList); j++)
-			{
-				GetArrayString(randomizeList, j, map, PLATFORM_MAX_PATH);
-				AddMapItem(map);
-			}
-			
-			CloseHandle(randomizeList);
-			randomizeList = INVALID_HANDLE;
-		}
-		
 		/* Wipe out our nominations list - Nominations have already been informed of this */
 		g_NominateCount = 0;
 		ClearArray(g_NominateOwners);
 		ClearArray(g_NominateList);
-
+		
 		if (!extendFirst)
 		{
 			AddExtendToMenu(g_VoteMenu, when);
@@ -1258,7 +1233,7 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 	Call_Finish();
 
 	LogAction(-1, -1, "Voting for next map has started.");
-	PrintToChatAll("[MCE] %t", "Nextmap Voting Started");
+	CPrintToChatAll("[MCE] %t", "Nextmap Voting Started");
 }
 
 public Handler_NativeVoteFinished(Handle:vote,
@@ -1277,100 +1252,14 @@ public Handler_NativeVoteFinished(Handle:vote,
 	Handler_MapVoteFinished(vote, num_votes, num_clients, client_info, num_items, item_info);
 }
 
-public Handler_MapVoteFinished(Handle:menu,
+
+public Handler_VoteFinishedGeneric(Handle:menu,
 						   num_votes, 
 						   num_clients,
 						   const client_info[][2], 
 						   num_items,
 						   const item_info[][2])
 {
-	if (num_votes == 0)
-	{
-		LogError("No Votes recorded yet Advanced callback fired - Tell pRED*/Powerlord to fix this");
-		return;	
-	}
-	
-	// Implement revote logic - Only run this` block if revotes are enabled and this isn't the last revote
-	if (num_items > 1 && GetConVarBool(g_Cvar_RunOff) && g_RunoffCount < GetConVarInt(g_Cvar_MaxRunOffs))
-	{
-		g_RunoffCount++;
-		new required_percent = GetConVarInt(g_Cvar_RunOffPercent);
-		new required_votes = RoundToCeil(float(num_votes) * float(required_percent) / 100);
-		new highest_votes = item_info[0][VOTEINFO_ITEM_VOTES];
-	
-		if (highest_votes == item_info[1][VOTEINFO_ITEM_VOTES])
-		{
-			g_HasVoteStarted = false;
-			
-			//Revote is needed
-			new arraySize = ByteCountToCells(PLATFORM_MAX_PATH);
-			new Handle:mapList = CreateArray(arraySize);
-
-			for (new i = 0; i < num_items; i++)
-			{
-				if (item_info[i][VOTEINFO_ITEM_VOTES] == highest_votes)
-				{
-					decl String:map[PLATFORM_MAX_PATH];
-					
-					GetMapItem(menu, item_info[i][VOTEINFO_ITEM_INDEX], map, PLATFORM_MAX_PATH);
-					PushArrayString(mapList, map);
-				}
-				else
-				{
-					break;
-				}
-			}
-
-			if (g_NativeVotes)
-			{
-				NativeVotes_DisplayFail(menu, NativeVotesFail_NotEnoughVotes);
-			}
-			
-			PrintToChatAll("[MCE] %t", "Tie Vote", GetArraySize(mapList));
-			SetupWarningTimer(WarningType_Revote, MapChange:g_ChangeTime, mapList);
-			return;
-		}
-		else if (highest_votes < required_votes)
-		{
-			g_HasVoteStarted = false;
-			
-			//Revote is needed
-			new arraySize = ByteCountToCells(PLATFORM_MAX_PATH);
-			new Handle:mapList = CreateArray(arraySize);
-
-			decl String:map1[PLATFORM_MAX_PATH];
-			GetMapItem(menu, item_info[0][VOTEINFO_ITEM_INDEX], map1, PLATFORM_MAX_PATH);
-
-			PushArrayString(mapList, map1);
-
-			// We allow more than two maps for a revote if they are tied
-			for (new i = 1; i < num_items; i++)
-			{
-				if (GetArraySize(mapList) < 2 || item_info[i][VOTEINFO_ITEM_VOTES] == item_info[i - 1][VOTEINFO_ITEM_VOTES])
-				{
-					decl String:map[PLATFORM_MAX_PATH];
-					GetMapItem(menu, item_info[i][VOTEINFO_ITEM_INDEX], map, PLATFORM_MAX_PATH);
-					PushArrayString(mapList, map);
-				}
-				else
-				{
-					break;
-				}
-			}
-			
-			if (g_NativeVotes)
-			{
-				NativeVotes_DisplayFail(menu, NativeVotesFail_NotEnoughVotes);
-			}
-			
-			PrintToChatAll("[MCE] %t", "Revote Is Needed", required_percent);
-			SetupWarningTimer(WarningType_Revote, MapChange:g_ChangeTime, mapList);
-			return;
-		}
-	}
-	
-	// No revote needed, continue as normal.
-	
 	decl String:map[PLATFORM_MAX_PATH];
 	GetMapItem(menu, item_info[0][VOTEINFO_ITEM_INDEX], map, PLATFORM_MAX_PATH);
 
@@ -1423,7 +1312,7 @@ public Handler_MapVoteFinished(Handle:menu,
 			NativeVotes_DisplayPassEx(menu, NativeVotesPass_Extend);
 		}
 		
-		PrintToChatAll("[MCE] %t", "Current Map Extended", RoundToFloor(float(item_info[0][VOTEINFO_ITEM_VOTES])/float(num_votes)*100), num_votes);
+		CPrintToChatAll("[MCE] %t", "Current Map Extended", RoundToFloor(float(item_info[0][VOTEINFO_ITEM_VOTES])/float(num_votes)*100), num_votes);
 		LogAction(-1, -1, "Voting for next map has finished. The current map has been extended.");
 		
 		// We extended, so we'll have to vote again.
@@ -1439,7 +1328,7 @@ public Handler_MapVoteFinished(Handle:menu,
 			NativeVotes_DisplayPassEx(menu, NativeVotesPass_Extend);
 		}
 		
-		PrintToChatAll("[MCE] %t", "Current Map Stays", RoundToFloor(float(item_info[0][VOTEINFO_ITEM_VOTES])/float(num_votes)*100), num_votes);
+		CPrintToChatAll("[MCE] %t", "Current Map Stays", RoundToFloor(float(item_info[0][VOTEINFO_ITEM_VOTES])/float(num_votes)*100), num_votes);
 		LogAction(-1, -1, "Voting for next map has finished. 'No Change' was the winner");
 		
 		g_HasVoteStarted = false;
@@ -1481,9 +1370,98 @@ public Handler_MapVoteFinished(Handle:menu,
 		g_HasVoteStarted = false;
 		g_MapVoteCompleted = true;
 		
-		PrintToChatAll("[MCE] %t", "Nextmap Voting Finished", map, RoundToFloor(float(item_info[0][VOTEINFO_ITEM_VOTES])/float(num_votes)*100), num_votes);
+		CPrintToChatAll("[MCE] %t", "Nextmap Voting Finished", map, RoundToFloor(float(item_info[0][VOTEINFO_ITEM_VOTES])/float(num_votes)*100), num_votes);
 		LogAction(-1, -1, "Voting for next map has finished. Nextmap: %s.", map);
 	}	
+}
+
+public Handler_MapVoteFinished(Handle:menu,
+						   num_votes, 
+						   num_clients,
+						   const client_info[][2], 
+						   num_items,
+						   const item_info[][2])
+{
+	// Implement revote logic - Only run this` block if revotes are enabled and this isn't the last revote
+	if (GetConVarBool(g_Cvar_RunOff) && num_items > 1 && g_RunoffCount < GetConVarInt(g_Cvar_MaxRunOffs))
+	{
+		g_RunoffCount++;
+		new highest_votes = item_info[0][VOTEINFO_ITEM_VOTES];
+		new required_percent = GetConVarInt(g_Cvar_RunOffPercent);
+		new required_votes = RoundToCeil(float(num_votes) * float(required_percent) / 100);
+		
+		if (highest_votes == item_info[1][VOTEINFO_ITEM_VOTES])
+		{
+			
+			//Revote is needed
+			new arraySize = ByteCountToCells(PLATFORM_MAX_PATH);
+			new Handle:mapList = CreateArray(arraySize);
+
+			for (new i = 0; i < num_items; i++)
+			{
+				if (item_info[i][VOTEINFO_ITEM_VOTES] == highest_votes)
+				{
+					decl String:map[PLATFORM_MAX_PATH];
+					
+					GetMapItem(menu, item_info[i][VOTEINFO_ITEM_INDEX], map, PLATFORM_MAX_PATH);
+					PushArrayString(mapList, map);
+				}
+				else
+				{
+					break;
+				}
+			}
+
+			if (g_NativeVotes)
+			{
+				NativeVotes_DisplayFail(menu, NativeVotesFail_NotEnoughVotes);
+			}
+			
+			CPrintToChatAll("[MCE] %t", "Tie Vote", GetArraySize(mapList));
+			SetupWarningTimer(WarningType_Revote, MapChange:g_ChangeTime, mapList);
+			return;
+		}
+		else if (highest_votes < required_votes)
+		{
+			g_HasVoteStarted = false;
+			
+			//Revote is needed
+			new arraySize = ByteCountToCells(PLATFORM_MAX_PATH);
+			new Handle:mapList = CreateArray(arraySize);
+
+			decl String:map1[PLATFORM_MAX_PATH];
+			GetMapItem(menu, item_info[0][VOTEINFO_ITEM_INDEX], map1, PLATFORM_MAX_PATH);
+
+			PushArrayString(mapList, map1);
+
+			// We allow more than two maps for a revote if they are tied
+			for (new i = 1; i < num_items; i++)
+			{
+				if (GetArraySize(mapList) < 2 || item_info[i][VOTEINFO_ITEM_VOTES] == item_info[i - 1][VOTEINFO_ITEM_VOTES])
+				{
+					decl String:map[PLATFORM_MAX_PATH];
+					GetMapItem(menu, item_info[i][VOTEINFO_ITEM_INDEX], map, PLATFORM_MAX_PATH);
+					PushArrayString(mapList, map);
+				}
+				else
+				{
+					break;
+				}
+			}
+			
+			if (g_NativeVotes)
+			{
+				NativeVotes_DisplayFail(menu, NativeVotesFail_NotEnoughVotes);
+			}
+			
+			CPrintToChatAll("[MCE] %t", "Revote Is Needed", required_percent);
+			SetupWarningTimer(WarningType_Revote, MapChange:g_ChangeTime, mapList);
+			return;
+		}
+	}
+	
+	// No revote needed, continue as normal.
+	Handler_VoteFinishedGeneric(menu, num_votes, num_clients, client_info, num_items, item_info);
 }
 
 // This is shared by NativeVotes now, but NV doesn't support Display or DisplayItem
@@ -1668,6 +1646,18 @@ public Action:Timer_ChangeMap(Handle:hTimer, Handle:dp)
 	return Plugin_Stop;
 }
 
+bool:RemoveStringFromArray(Handle:array, String:str[])
+{
+	new index = FindStringInArray(array, str);
+	if (index != -1)
+	{
+		RemoveFromArray(array, index);
+		return true;
+	}
+	
+	return false;
+}
+
 CreateNextVote()
 {
 	if(g_NextMapList != INVALID_HANDLE)
@@ -1679,22 +1669,14 @@ CreateNextVote()
 	new index, Handle:tempMaps  = CloneArray(g_MapList);
 	
 	GetCurrentMap(map, PLATFORM_MAX_PATH);
-	index = FindStringInArray(tempMaps, map);
-	if (index != -1)
-	{
-		RemoveFromArray(tempMaps, index);
-	}	
+	RemoveStringFromArray(tempMaps, map);
 	
 	if (GetConVarInt(g_Cvar_ExcludeMaps) && GetArraySize(tempMaps) > GetConVarInt(g_Cvar_ExcludeMaps))
 	{
 		for (new i = 0; i < GetArraySize(g_OldMapList); i++)
 		{
 			GetArrayString(g_OldMapList, i, map, PLATFORM_MAX_PATH);
-			index = FindStringInArray(tempMaps, map);
-			if (index != -1)
-			{
-				RemoveFromArray(tempMaps, index);
-			}
+			RemoveStringFromArray(tempMaps, map);
 		}	
 	}
 
