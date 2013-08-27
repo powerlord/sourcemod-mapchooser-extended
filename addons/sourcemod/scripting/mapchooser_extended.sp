@@ -1209,18 +1209,18 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 			{
 				if (g_NativeVotes)
 				{
-					NativeVotes_AddItem(g_VoteMenu, NATIVEVOTES_EXTEND, NATIVEVOTES_EXTEND);
+					NativeVotes_AddItem(g_VoteMenu, VOTE_DONTCHANGE, "Don't Change");
 				}
 				else
 				{
 					AddMenuItem(g_VoteMenu, VOTE_DONTCHANGE, "Don't Change");
 				}
 			}
-			else if (StrEqual(map, VOTE_EXTEND) || StrEqual(map, NATIVEVOTES_EXTEND))
+			else if (StrEqual(map, VOTE_EXTEND))
 			{
 				if (g_NativeVotes)
 				{
-					NativeVotes_AddItem(g_VoteMenu, NATIVEVOTES_EXTEND, NATIVEVOTES_EXTEND);
+					NativeVotes_AddItem(g_VoteMenu, VOTE_EXTEND, "Extend Map");
 				}
 				else
 				{
@@ -1378,7 +1378,7 @@ public Handler_MapVoteFinished(Handle:menu,
 	Call_PushString(map);
 	Call_Finish();
 
-	if ((strcmp(map, VOTE_EXTEND, false) == 0) || (strcmp(map, NATIVEVOTES_EXTEND, false) == 0))
+	if (strcmp(map, VOTE_EXTEND, false) == 0)
 	{
 		g_Extends++;
 		
@@ -1506,16 +1506,20 @@ public Handler_MapVoteMenu(Handle:menu, MenuAction:action, param1, param2)
 		
 		case MenuAction_Display:
 		{
-	 		decl String:buffer[255];
-			Format(buffer, sizeof(buffer), "%T", "Vote Nextmap", param1);
-
-			new Handle:panel = Handle:param2;
-			SetPanelTitle(panel, buffer);
+			// NativeVotes uses the standard TF2/CSGO vote screen
+			if (!g_NativeVotes)
+			{
+				decl String:buffer[255];
+				Format(buffer, sizeof(buffer), "%T", "Vote Nextmap", param1);
+				new Handle:panel = Handle:param2;
+				SetPanelTitle(panel, buffer);
+			}
 		}
 		
 		case MenuAction_DisplayItem:
 		{
-			decl String:map[PLATFORM_MAX_PATH], String:buffer[255];
+			new String:map[PLATFORM_MAX_PATH];
+			new String:buffer[255];
 			new mark = GetConVarInt(g_Cvar_MarkCustomMaps);
 			
 			GetMenuItem(menu, param2, map, PLATFORM_MAX_PATH);
@@ -1523,23 +1527,19 @@ public Handler_MapVoteMenu(Handle:menu, MenuAction:action, param1, param2)
 			if (StrEqual(map, VOTE_EXTEND, false))
 			{
 				Format(buffer, sizeof(buffer), "%T", "Extend Map", param1);
-				return RedrawMenuItem(buffer);
 			}
 			else if (StrEqual(map, VOTE_DONTCHANGE, false))
 			{
 				Format(buffer, sizeof(buffer), "%T", "Dont Change", param1);
-				return RedrawMenuItem(buffer);					
 			}
 			// Mapchooser Extended
 			else if (StrEqual(map, LINE_ONE, false))
 			{
 				Format(buffer, sizeof(buffer),"%T", "Line One", param1);
-				return RedrawMenuItem(buffer);
 			}
 			else if (StrEqual(map, LINE_TWO, false))
 			{
 				Format(buffer, sizeof(buffer),"%T", "Line Two", param1);
-				return RedrawMenuItem(buffer);
 			}
 			// Note that the first part is to discard the spacer line
 			else if (!StrEqual(map, LINE_SPACER, false))
@@ -1547,11 +1547,22 @@ public Handler_MapVoteMenu(Handle:menu, MenuAction:action, param1, param2)
 				if (mark == 1 && !InternalIsMapOfficial(map))
 				{
 					Format(buffer, sizeof(buffer), "%T", "Custom Marked", param1, map);
-					return RedrawMenuItem(buffer);
 				}
 				else if (mark == 2 && !InternalIsMapOfficial(map))
 				{
 					Format(buffer, sizeof(buffer), "%T", "Custom", param1, map);
+				}
+			}
+			
+			if (buffer[0] != '\0')
+			{
+				if (g_NativeVotes)
+				{
+					NativeVotes_RedrawVoteItem(buffer);
+					return _:Plugin_Continue;
+				}
+				else
+				{
 					return RedrawMenuItem(buffer);
 				}
 			}
@@ -1600,7 +1611,7 @@ public Handler_MapVoteMenu(Handle:menu, MenuAction:action, param1, param2)
 						GetMenuItem(menu, item, map, PLATFORM_MAX_PATH);
 					}
 				}
-				while (strcmp(map, VOTE_EXTEND, false) == 0 || strcmp(map, NATIVEVOTES_EXTEND, false) == 0);
+				while (strcmp(map, VOTE_EXTEND, false) == 0);
 				
 				SetNextMap(map);
 				g_MapVoteCompleted = true;
@@ -2122,34 +2133,7 @@ stock AddMapItem(const String:map[])
 {
 	if (g_NativeVotes)
 	{
-		new mark = GetConVarInt(g_Cvar_MarkCustomMaps);
-
-		if (mark > 0 && !InternalIsMapOfficial(map))
-		{
-			decl String:buffer[255];
-			switch(mark)
-			{
-				case 1:
-				{
-					Format(buffer, sizeof(buffer), "%T", "Custom Marked", LANG_SERVER, map);
-				}
-				
-				case 2:
-				{
-					Format(buffer, sizeof(buffer), "%T", "Custom", LANG_SERVER, map);
-				}
-				
-				default:
-				{
-					strcopy(buffer, sizeof(buffer), map);
-				}
-			}
-			NativeVotes_AddItem(g_VoteMenu, map, buffer);
-		}
-		else
-		{
-			NativeVotes_AddItem(g_VoteMenu, map, map);
-		}
+		NativeVotes_AddItem(g_VoteMenu, map, map);
 	}
 	else
 	{
@@ -2179,7 +2163,7 @@ stock AddExtendToMenu(Handle:menu, MapChange:when)
 		if (g_NativeVotes)
 		{
 			// Built-in votes don't have "Don't Change", send Extend instead
-			NativeVotes_AddItem(menu, NATIVEVOTES_EXTEND, NATIVEVOTES_EXTEND);
+			NativeVotes_AddItem(menu, VOTE_DONTCHANGE, "Don't Change");
 		}
 		else
 		{
@@ -2190,7 +2174,7 @@ stock AddExtendToMenu(Handle:menu, MapChange:when)
 	{
 		if (g_NativeVotes)
 		{
-			NativeVotes_AddItem(menu, NATIVEVOTES_EXTEND, NATIVEVOTES_EXTEND);
+			NativeVotes_AddItem(menu, VOTE_EXTEND, "Extend Map");
 		}
 		else
 		{
