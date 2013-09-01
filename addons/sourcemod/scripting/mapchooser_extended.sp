@@ -1510,7 +1510,14 @@ public Handler_MapVoteMenu(Handle:menu, MenuAction:action, param1, param2)
 			new String:buffer[255];
 			new mark = GetConVarInt(g_Cvar_MarkCustomMaps);
 			
-			GetMenuItem(menu, param2, map, PLATFORM_MAX_PATH);
+			if (g_NativeVotes)
+			{
+				NativeVotes_GetItem(menu, param2, map, PLATFORM_MAX_PATH);
+			}
+			else
+			{
+				GetMenuItem(menu, param2, map, PLATFORM_MAX_PATH);
+			}
 			
 			if (StrEqual(map, VOTE_EXTEND, false))
 			{
