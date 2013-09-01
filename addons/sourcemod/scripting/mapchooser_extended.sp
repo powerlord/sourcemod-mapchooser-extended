@@ -33,6 +33,16 @@
  * Version: $Id$
  */
 
+//#define DEBUG
+
+#if defined DEBUG
+	#define assert(%1) if (!(%1)) ThrowError("Debug Assertion Failed");
+	#define assert_msg(%1,%2) if (!(%1)) ThrowError(%2);
+#else
+	#define assert(%1)
+	#define assert_msg(%1,%2)
+#endif
+
 #pragma semicolon 1
 #include <sourcemod>
 #include <mapchooser>
@@ -1660,13 +1670,11 @@ bool:RemoveStringFromArray(Handle:array, String:str[])
 
 CreateNextVote()
 {
-	if(g_NextMapList != INVALID_HANDLE)
-	{
-		ClearArray(g_NextMapList);
-	}
+	assert(g_NextMapList)
+	ClearArray(g_NextMapList);
 	
 	decl String:map[PLATFORM_MAX_PATH];
-	new index, Handle:tempMaps  = CloneArray(g_MapList);
+	new Handle:tempMaps  = CloneArray(g_MapList);
 	
 	GetCurrentMap(map, PLATFORM_MAX_PATH);
 	RemoveStringFromArray(tempMaps, map);

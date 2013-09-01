@@ -172,7 +172,7 @@ public OnMapVoteStarted()
 	PlaySound(SoundEvent_VoteStart);
 }
 
-public OnMapVoteEnd(String:map[])
+public OnMapVoteEnd(const String:map[])
 {
 	PlaySound(SoundEvent_VoteEnd);
 }
