@@ -1054,6 +1054,12 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 	/* No input given - User our internal nominations and maplist */
 	if (inputlist == INVALID_HANDLE)
 	{
+		new Handle:randomizeList = INVALID_HANDLE;
+		if (GetConVarBool(g_Cvar_RandomizeNominations))
+		{
+			randomizeList = CloneArray(g_NominateList);
+		}
+		
 		new nominateCount = GetArraySize(g_NominateList);
 		new voteSize = GetConVarInt(g_Cvar_IncludeMaps);
 		
@@ -1092,23 +1098,14 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 			AddExtendToMenu(g_VoteMenu, when);
 		}
 		
-		// Moved in 1.10.  I figure this works better than dragging extra handles around
-		if (GetConVarBool(g_Cvar_RandomizeNominations))
-		{
-			new start = GetArraySize(g_NominateList) - 1;
-			// Fisher-Yates Shuffle
-			for (new i = start; i >= 1; --i)
-			{
-				new pos = GetRandomInt(0, i);
-				SwapArrayItems(g_NominateList, pos, i);
-			}
-		}
-		
 		for (new i=0; i<nominationsToAdd; i++)
 		{
 			GetArrayString(g_NominateList, i, map, PLATFORM_MAX_PATH);
 			
-			AddMapItem(map);
+			if (randomizeList == INVALID_HANDLE)
+			{
+				AddMapItem(map);
+			}
 			RemoveStringFromArray(g_NextMapList, map);
 			
 			/* Notify Nominations that this map is now free */
@@ -1156,8 +1153,15 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 			GetArrayString(g_NextMapList, count, map, PLATFORM_MAX_PATH);
 			count++;
 			
-			/* Insert the map and increment our count */
-			AddMapItem(map);
+			if (randomizeList == INVALID_HANDLE)
+			{
+				/* Insert the map and increment our count */
+				AddMapItem(map);
+			}
+			else
+			{
+				PushArrayString(randomizeList, map);
+			}
 			i++;
 			
 			if (count >= availableMaps)
@@ -1165,6 +1169,25 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 				//Run out of maps, this will have to do.
 				break;	
 			}
+		}
+		
+		if (randomizeList != INVALID_HANDLE)
+		{
+			// Fisher-Yates Shuffle
+			for (new j = GetArraySize(randomizeList) - 1; j >= 1; j--)
+			{
+				new k = GetRandomInt(0, j);
+				SwapArrayItems(randomizeList, j, k);
+			}
+			
+			for (new j = 0; j < GetArraySize(randomizeList); j++)
+			{
+				GetArrayString(randomizeList, j, map, PLATFORM_MAX_PATH);
+				AddMapItem(map);
+			}
+			
+			CloseHandle(randomizeList);
+			randomizeList = INVALID_HANDLE;
 		}
 		
 		/* Wipe out our nominations list - Nominations have already been informed of this */
