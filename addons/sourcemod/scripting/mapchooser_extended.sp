@@ -277,57 +277,74 @@ public OnPluginStart()
 	g_Cvar_Maxrounds = FindConVar("mp_maxrounds");
 	g_Cvar_Fraglimit = FindConVar("mp_fraglimit");
 	
-	decl String:folder[64];
-	GetGameFolderName(folder, sizeof(folder));
-
-	if (strcmp(folder, "tf") == 0)
+	new EngineVersion:version = GetEngineVersionCompat();
+	
+	switch (version)
 	{
-		g_Cvar_VoteNextLevel = FindConVar("sv_vote_issue_nextlevel_allowed");
-		g_Cvar_Bonusroundtime = FindConVar("mp_bonusroundtime");			
-	}
-	else if (strcmp(folder, "csgo") == 0)
-	{
-		g_Cvar_VoteNextLevel = FindConVar("mp_endmatch_votenextmap");
-		g_Cvar_GameType = FindConVar("game_type");
-		g_Cvar_GameMode = FindConVar("game_mode");
-		g_Cvar_Bonusroundtime = FindConVar("mp_bonusroundtime");			
-	}
-	else if (strcmp(folder, "dod") == 0)
-	{
-		g_Cvar_Bonusroundtime = FindConVar("dod_bonusroundtime");
-	}
-	else
-	{
-		g_Cvar_Bonusroundtime = FindConVar("mp_bonusroundtime");			
+		case Engine_TF2:
+		{
+			g_Cvar_VoteNextLevel = FindConVar("sv_vote_issue_nextlevel_allowed");
+			g_Cvar_Bonusroundtime = FindConVar("mp_bonusroundtime");			
+		}
+		
+		case Engine_CSGO:
+		{
+			g_Cvar_VoteNextLevel = FindConVar("mp_endmatch_votenextmap");
+			g_Cvar_GameType = FindConVar("game_type");
+			g_Cvar_GameMode = FindConVar("game_mode");
+			g_Cvar_Bonusroundtime = FindConVar("mp_round_restart_delay");
+		}
+		
+		case Engine_DODS:
+		{
+			g_Cvar_Bonusroundtime = FindConVar("dod_bonusroundtime");
+		}
+		
+		case Engine_CSS:
+		{
+			g_Cvar_Bonusroundtime = FindConVar("mp_round_restart_delay");
+		}
+		
+		default:
+		{
+			g_Cvar_Bonusroundtime = FindConVar("mp_bonusroundtime");			
+		}
 	}
 
 	if (g_Cvar_Winlimit != INVALID_HANDLE || g_Cvar_Maxrounds != INVALID_HANDLE)
 	{
-		if (strcmp(folder, "tf") == 0)
+		switch (version)
 		{
-			HookEvent("teamplay_win_panel", Event_TeamPlayWinPanel);
-			HookEvent("teamplay_restart_round", Event_TFRestartRound);
-			HookEvent("arena_win_panel", Event_TeamPlayWinPanel);
-			HookEvent("pve_win_panel", Event_MvMWinPanel);
-		}
-		else if (strcmp(folder, "nucleardawn") == 0)
-		{
-			HookEvent("round_win", Event_RoundEnd);
-		}
-		else if (strcmp(folder, "csgo") == 0)
-		{
-			HookEvent("round_end", Event_RoundEnd);
-			HookEvent("cs_intermission", Event_Intermission);
-			HookEvent("announce_phase_end", Event_PhaseEnd);
-			g_Cvar_MatchClinch = FindConVar("mp_match_can_clinch");
-		}
-		else if (strcmp(folder, "dod") == 0)
-		{
-			HookEvent("dod_round_win", Event_RoundEnd);
-		}
-		else
-		{
-			HookEvent("round_end", Event_RoundEnd);
+			case Engine_TF2:
+			{
+				HookEvent("teamplay_win_panel", Event_TeamPlayWinPanel);
+				HookEvent("teamplay_restart_round", Event_TFRestartRound);
+				HookEvent("arena_win_panel", Event_TeamPlayWinPanel);
+				HookEvent("pve_win_panel", Event_MvMWinPanel);
+			}
+			
+			case Engine_NuclearDawn:
+			{
+				HookEvent("round_win", Event_RoundEnd);
+			}
+			
+			case Engine_CSGO:
+			{
+				HookEvent("round_end", Event_RoundEnd);
+				HookEvent("cs_intermission", Event_Intermission);
+				HookEvent("announce_phase_end", Event_PhaseEnd);
+				g_Cvar_MatchClinch = FindConVar("mp_match_can_clinch");
+			}
+			
+			case Engine_DODS:
+			{
+				HookEvent("dod_round_win", Event_RoundEnd);
+			}
+			
+			default:
+			{
+				HookEvent("round_end", Event_RoundEnd);
+			}
 		}
 	}
 	
@@ -367,6 +384,8 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 	
 	RegPluginLibrary("mapchooser");	
 	
+	MarkNativeAsOptional("GetEngineVersion");
+
 	CreateNative("NominateMap", Native_NominateMap);
 	CreateNative("RemoveNominationByMap", Native_RemoveNominationByMap);
 	CreateNative("RemoveNominationByOwner", Native_RemoveNominationByOwner);
@@ -2201,4 +2220,110 @@ stock AddExtendToMenu(Handle:menu, MapChange:when)
 			AddMenuItem(menu, VOTE_EXTEND, "Extend Map");
 		}
 	}
+}
+
+// Using this stock REQUIRES you to add the following to AskPluginLoad2:
+// MarkNativeAsOptional("GetEngineVersion");
+stock EngineVersion:GetEngineVersionCompat()
+{
+	new EngineVersion:version;
+	if (GetFeatureStatus(FeatureType_Native, "GetEngineVersion") != FeatureStatus_Available)
+	{
+		new sdkVersion = GuessSDKVersion();
+		switch (sdkVersion)
+		{
+			case SOURCE_SDK_ORIGINAL:
+			{
+				version = Engine_Original;
+			}
+			
+			case SOURCE_SDK_DARKMESSIAH:
+			{
+				version = Engine_DarkMessiah;
+			}
+			
+			case SOURCE_SDK_EPISODE1:
+			{
+				version = Engine_SourceSDK2006;
+			}
+			
+			case SOURCE_SDK_EPISODE2:
+			{
+				version = Engine_SourceSDK2007;
+			}
+			
+			case SOURCE_SDK_BLOODYGOODTIME:
+			{
+				version = Engine_BloodyGoodTime;
+			}
+			
+			case SOURCE_SDK_EYE:
+			{
+				version = Engine_EYE;
+			}
+			
+			case SOURCE_SDK_CSS:
+			{
+				version = Engine_CSS;
+			}
+			
+			case SOURCE_SDK_EPISODE2VALVE:
+			{
+				decl String:gameFolder[PLATFORM_MAX_PATH];
+				GetGameFolderName(gameFolder, PLATFORM_MAX_PATH);
+				if (StrEqual(gameFolder, "dod", false))
+				{
+					version = Engine_DODS;
+				}
+				else if (StrEqual(gameFolder, "hl2mp", false))
+				{
+					version = Engine_HL2DM;
+				}
+				else
+				{
+					version = Engine_TF2;
+				}
+			}
+			
+			case SOURCE_SDK_LEFT4DEAD:
+			{
+				version = Engine_Left4Dead;
+			}
+			
+			case SOURCE_SDK_LEFT4DEAD2:
+			{
+				decl String:gameFolder[PLATFORM_MAX_PATH];
+				GetGameFolderName(gameFolder, PLATFORM_MAX_PATH);
+				if (StrEqual(gameFolder, "nd", false))
+				{
+					version = Engine_NuclearDawn;
+				}
+				else
+				{
+					version = Engine_Left4Dead2;
+				}
+			}
+			
+			case SOURCE_SDK_ALIENSWARM:
+			{
+				version = Engine_AlienSwarm;
+			}
+			
+			case SOURCE_SDK_CSGO:
+			{
+				version = Engine_CSGO;
+			}
+			
+			default:
+			{
+				version = Engine_Unknown;
+			}
+		}
+	}
+	else
+	{
+		version = GetEngineVersion();
+	}
+	
+	return version;
 }
