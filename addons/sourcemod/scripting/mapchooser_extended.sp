@@ -1444,6 +1444,7 @@ public Handler_MapVoteFinished(Handle:menu,
 		
 		if (highest_votes == item_info[1][VOTEINFO_ITEM_VOTES])
 		{
+			g_HasVoteStarted = false;
 			
 			//Revote is needed
 			new arraySize = ByteCountToCells(PLATFORM_MAX_PATH);
