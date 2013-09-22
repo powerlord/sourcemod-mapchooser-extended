@@ -68,7 +68,7 @@ public Plugin:myinfo =
 	author = "Powerlord",
 	description = "Sound support for Mapchooser Extended",
 	version = VERSION,
-	url = "https://forums.alliedmods.net/showthread.php?p=1469363"
+	url = "https://forums.alliedmods.net/showthread.php?t=156974"
 }
 
 // Map enum values to their named values
