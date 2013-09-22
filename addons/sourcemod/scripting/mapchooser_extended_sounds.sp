@@ -9,7 +9,7 @@
 #include "include/mapchooser_extended"
 #include <sdktools>
 
-#define VERSION "1.9.7"
+#define VERSION "1.10.0"
 
 #define CONFIG_FILE "configs/mapchooser_extended/sounds.cfg"
 #define CONFIG_DIRECTORY "configs/mapchooser_extended/sounds"
