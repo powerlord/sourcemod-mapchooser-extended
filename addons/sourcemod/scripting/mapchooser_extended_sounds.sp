@@ -385,7 +385,7 @@ LoadSounds()
 													continue;
 												}
 												
-												// This seems wrong, but this is documented on the forums here: http://forums.alliedmods.net/showthread.php?t=151942
+												// This seems wrong, but this is documented on the forums here: https://forums.alliedmods.net/showthread.php?t=151942
 												SetTrieArray(counterTrie, time, soundData[0], sizeof(soundData));
 												
 												//SetArrayString(counterArray, key, soundFile);
