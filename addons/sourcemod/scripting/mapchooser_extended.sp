@@ -54,7 +54,7 @@
 #undef REQUIRE_PLUGIN
 #include <nativevotes>
 
-#define MCE_VERSION "1.10.0"
+#define MCE_VERSION "1.10.1"
 
 #define NV "nativevotes"
 
@@ -1080,18 +1080,8 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 		}
 		
 		new nominateCount = GetArraySize(g_NominateList);
-		new voteSize = GetConVarInt(g_Cvar_IncludeMaps);
 		
-		// New in 1.9.5 to let us bump up the included maps count
-		if (g_NativeVotes)
-		{
-			new max = NativeVotes_GetMaxItems();
-			
-			if (max < voteSize)
-			{
-				voteSize = max;
-			}
-		}
+		new voteSize = GetVoteSize();
 		
 		// The if and else if could be combined, but it looks extremely messy
 		// This is a hack to lower the vote menu size by 1 when Don't Change or Extend Map should appear
@@ -1268,7 +1258,7 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 	{
 		//SetMenuExitButton(g_VoteMenu, false);
 		
-		if (GetConVarInt(g_Cvar_IncludeMaps) <= GetMaxPageItems(GetMenuStyle(g_VoteMenu)))
+		if (GetVoteSize() <= GetMaxPageItems(GetMenuStyle(g_VoteMenu)))
 		{
 			//This is necessary to get items 9 and 0 as usable voting items
 			SetMenuPagination(g_VoteMenu, MENU_NO_PAGINATION);
@@ -1738,18 +1728,8 @@ CreateNextVote()
 		}	
 	}
 
-	new limit = (GetConVarInt(g_Cvar_IncludeMaps) < GetArraySize(tempMaps) ? GetConVarInt(g_Cvar_IncludeMaps) : GetArraySize(tempMaps));
-	
-	// New in 1.9.5 to let us bump up the included maps count
-	if (g_NativeVotes)
-	{
-		new max = NativeVotes_GetMaxItems();
-		
-		if (max < limit)
-		{
-			limit = max;
-		}
-	}
+	new voteSize = GetVoteSize();
+	new limit = (voteSize < GetArraySize(tempMaps) ? voteSize : GetArraySize(tempMaps));
 	
 	for (new i = 0; i < limit; i++)
 	{
@@ -1796,7 +1776,7 @@ NominateResult:InternalNominateMap(String:map[], bool:force, owner)
 	}
 	
 	/* Too many nominated maps. */
-	if (g_NominateCount >= GetConVarInt(g_Cvar_IncludeMaps) && !force)
+	if (g_NominateCount >= GetVoteSize() && !force)
 	{
 		return Nominate_VoteFull;
 	}
@@ -1812,7 +1792,7 @@ NominateResult:InternalNominateMap(String:map[], bool:force, owner)
 	PushArrayCell(g_NominateOwners, owner);
 	g_NominateCount++;
 	
-	while (GetArraySize(g_NominateList) > GetConVarInt(g_Cvar_IncludeMaps))
+	while (GetArraySize(g_NominateList) > GetVoteSize())
 	{
 		new String:oldmap[PLATFORM_MAX_PATH];
 		GetArrayString(g_NominateList, 0, oldmap, PLATFORM_MAX_PATH);
@@ -2160,7 +2140,7 @@ public Native_CanNominate(Handle:plugin, numParams)
 		return _:CanNominate_No_VoteComplete;
 	}
 	
-	if (g_NominateCount >= GetConVarInt(g_Cvar_IncludeMaps))
+	if (g_NominateCount >= GetVoteSize())
 	{
 		return _:CanNominate_No_VoteFull;
 	}
@@ -2327,4 +2307,22 @@ stock EngineVersion:GetEngineVersionCompat()
 	}
 	
 	return version;
+}
+
+GetVoteSize()
+{
+	new voteSize = GetConVarInt(g_Cvar_IncludeMaps);
+	
+	// New in 1.9.5 to let us bump up the included maps count
+	if (g_NativeVotes)
+	{
+		new max = NativeVotes_GetMaxItems();
+		
+		if (max < voteSize)
+		{
+			voteSize = max;
+		}
+	}
+	
+	return voteSize;
 }
