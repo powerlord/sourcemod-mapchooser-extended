@@ -81,12 +81,6 @@ enum
 	GunGameMode_DeathMatch	= 2,
 }
 
-
-#define CSGO_CASUAL			0
-#define CSGO_COMPETITIVE	0
-
-#define CSGO_GUNGAME		0
-
 public Plugin:myinfo =
 {
 	name = "MapChooser Extended",
@@ -863,9 +857,9 @@ public CheckWinLimit(winner_score)
 		if (clinch)
 		{
 			new maxrounds = GetConVarInt(g_Cvar_Maxrounds);
-			new winlimit = maxrounds / 2;
+			new winlimit = RoundFloat(maxrounds / 2.0);
 			
-			if(winner_score > (winlimit - GetConVarInt(g_Cvar_StartRounds)))
+			if(winner_score == winlimit - 1)
 			{
 				if (!g_WarningInProgress || g_WarningTimer == INVALID_HANDLE)
 				{
