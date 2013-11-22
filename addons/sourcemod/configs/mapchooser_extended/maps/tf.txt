@@ -60,4 +60,6 @@ mvm_bigrock
 cp_process_final
 cp_standin_final
 plr_hightower_event
-
+cp_snakewater_final1
+mvm_mannhattan
+mvm_rottenburg
