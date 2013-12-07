@@ -273,6 +273,11 @@ public OnPluginStart()
 	
 	new EngineVersion:version = GetEngineVersionCompat();
 	
+	decl String:mapListPath[PLATFORM_MAX_PATH];
+	
+	BuildPath(Path_SM, mapListPath, PLATFORM_MAX_PATH, "configs/mapchooser_extended/maps/%s.txt", g_GameModName);
+	SetMapListCompatBind("official", mapListPath);
+
 	switch (version)
 	{
 		case Engine_TF2:
@@ -2062,11 +2067,6 @@ stock SetupWarningTimer(WarningType:type, MapChange:when=MapChange_MapEnd, Handl
 
 stock InitializeOfficialMapList()
 {
-	decl String:mapListPath[PLATFORM_MAX_PATH];
-	
-	BuildPath(Path_SM, mapListPath, PLATFORM_MAX_PATH, "configs/mapchooser_extended/maps/%s.txt", g_GameModName);
-	SetMapListCompatBind("official", mapListPath);
-
 	// If this fails, we want it to have an empty adt_array
 	if (ReadMapList(g_OfficialList,
 		g_mapOfficialFileSerial,
