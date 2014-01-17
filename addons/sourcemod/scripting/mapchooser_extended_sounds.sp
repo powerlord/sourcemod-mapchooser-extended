@@ -9,7 +9,7 @@
 #include "include/mapchooser_extended"
 #include <sdktools>
 
-#define VERSION "1.10.0"
+#define VERSION "1.10.1"
 
 #define CONFIG_FILE "configs/mapchooser_extended/sounds.cfg"
 #define CONFIG_DIRECTORY "configs/mapchooser_extended/sounds"
@@ -38,6 +38,8 @@ new Handle:g_CurrentSoundSet = INVALID_HANDLE; // Lazy "pointer" to the current 
 
 //Global variables
 new bool:g_DownloadAllSounds;
+
+new bool:g_bNeedsFakePrecache = false;
 
 enum SoundEvent
 {
@@ -86,6 +88,11 @@ PopulateTypeNamesArray()
 	}
 }
 
+public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
+{
+	MarkNativeAsOptional("GetEngineVersion");
+}
+
 public OnPluginStart()
 {
 	g_Cvar_EnableSounds = CreateConVar("mce_sounds_enablesounds", "1", "Enable this plugin.  Sounds will still be downloaded (if applicable) even if the plugin is disabled this way.", FCVAR_NONE, true, 0.0, true, 1.0);
@@ -109,6 +116,13 @@ public OnPluginStart()
 	g_SoundFiles = CreateTrie();
 	LoadSounds();
 	HookConVarChange(g_Cvar_SoundSet, SoundSetChanged);
+	
+	new EngineVersion:engVersion = GetEngineVersionCompat();
+	if (engVersion == Engine_CSGO || engVersion == Engine_DOTA)
+//	if (engVersion == Engine_CSGO)
+	{
+		g_bNeedsFakePrecache = true;
+	}
 }
 
 // Not sure this is required, but there were some weird crashes when this plugin was unloaded.  This is an attempt to fix that.
@@ -530,11 +544,11 @@ CacheSound(soundData[SoundStore])
 {
 	if (soundData[SoundStore_Type] == SoundType_Builtin)
 	{
-		PrecacheSound(soundData[SoundStore_Value]);
+		PrecacheSoundAny(soundData[SoundStore_Value]);
 	}
 	else if (soundData[SoundStore_Type] == SoundType_Sound)
 	{
-		if (PrecacheSound(soundData[SoundStore_Value]))
+		if (PrecacheSoundAny(soundData[SoundStore_Value]))
 		{
 			decl String:downloadLocation[PLATFORM_MAX_PATH];
 			Format(downloadLocation, sizeof(downloadLocation), "sound/%s", soundData[SoundStore_Value]);
@@ -564,4 +578,131 @@ stock CloseSoundArrayHandles()
 	}
 	ClearTrie(g_SoundFiles);
 	ClearArray(g_SetNames);
+}
+
+stock bool:PrecacheSoundAny( const String:szPath[] )
+{
+	if (g_bNeedsFakePrecache)
+	{
+		return FakePrecacheSoundEx(szPath);
+	}
+	else
+	{
+		return PrecacheSound(szPath);
+	}
+}
+
+stock bool:FakePrecacheSoundEx( const String:szPath[] )
+{
+	decl String:szPathStar[PLATFORM_MAX_PATH];
+	Format(szPathStar, sizeof(szPathStar), "*%s", szPath);
+	
+	AddToStringTable( FindStringTable( "soundprecache" ), szPathStar );
+	return true;
+}
+
+// Using this stock REQUIRES you to add the following to AskPluginLoad2:
+// MarkNativeAsOptional("GetEngineVersion");
+stock EngineVersion:GetEngineVersionCompat()
+{
+	new EngineVersion:version;
+	if (GetFeatureStatus(FeatureType_Native, "GetEngineVersion") != FeatureStatus_Available)
+	{
+		new sdkVersion = GuessSDKVersion();
+		switch (sdkVersion)
+		{
+			case SOURCE_SDK_ORIGINAL:
+			{
+				version = Engine_Original;
+			}
+			
+			case SOURCE_SDK_DARKMESSIAH:
+			{
+				version = Engine_DarkMessiah;
+			}
+			
+			case SOURCE_SDK_EPISODE1:
+			{
+				version = Engine_SourceSDK2006;
+			}
+			
+			case SOURCE_SDK_EPISODE2:
+			{
+				version = Engine_SourceSDK2007;
+			}
+			
+			case SOURCE_SDK_BLOODYGOODTIME:
+			{
+				version = Engine_BloodyGoodTime;
+			}
+			
+			case SOURCE_SDK_EYE:
+			{
+				version = Engine_EYE;
+			}
+			
+			case SOURCE_SDK_CSS:
+			{
+				version = Engine_CSS;
+			}
+			
+			case SOURCE_SDK_EPISODE2VALVE:
+			{
+				decl String:gameFolder[PLATFORM_MAX_PATH];
+				GetGameFolderName(gameFolder, PLATFORM_MAX_PATH);
+				if (StrEqual(gameFolder, "dod", false))
+				{
+					version = Engine_DODS;
+				}
+				else if (StrEqual(gameFolder, "hl2mp", false))
+				{
+					version = Engine_HL2DM;
+				}
+				else
+				{
+					version = Engine_TF2;
+				}
+			}
+			
+			case SOURCE_SDK_LEFT4DEAD:
+			{
+				version = Engine_Left4Dead;
+			}
+			
+			case SOURCE_SDK_LEFT4DEAD2:
+			{
+				decl String:gameFolder[PLATFORM_MAX_PATH];
+				GetGameFolderName(gameFolder, PLATFORM_MAX_PATH);
+				if (StrEqual(gameFolder, "nd", false))
+				{
+					version = Engine_NuclearDawn;
+				}
+				else
+				{
+					version = Engine_Left4Dead2;
+				}
+			}
+			
+			case SOURCE_SDK_ALIENSWARM:
+			{
+				version = Engine_AlienSwarm;
+			}
+			
+			case SOURCE_SDK_CSGO:
+			{
+				version = Engine_CSGO;
+			}
+			
+			default:
+			{
+				version = Engine_Unknown;
+			}
+		}
+	}
+	else
+	{
+		version = GetEngineVersion();
+	}
+	
+	return version;
 }
