@@ -38,6 +38,9 @@
 #include <colors>
 #pragma semicolon 1
 
+#undef REQUIRE_PLUGIN
+#include <nativevotes>
+
 #define MCE_VERSION "1.10.0"
 
 public Plugin:myinfo =
@@ -67,6 +70,10 @@ new Handle:g_mapTrie;
 // Nominations Extended Convars
 new Handle:g_Cvar_MarkCustomMaps = INVALID_HANDLE;
 
+new bool:g_NativeVotes = false;
+
+#define NV "nativevotes"
+
 public OnPluginStart()
 {
 	LoadTranslations("common.phrases");
@@ -90,7 +97,6 @@ public OnPluginStart()
 	// Nominations Extended cvars
 	CreateConVar("ne_version", MCE_VERSION, "Nominations Extended Version", FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_NOTIFY|FCVAR_DONTRECORD);
 
-
 	g_mapTrie = CreateTrie();
 }
 
@@ -98,6 +104,34 @@ public OnAllPluginsLoaded()
 {
 	// This is an MCE cvar... this plugin requires MCE to be loaded.  Granted, this plugin SHOULD have an MCE dependency.
 	g_Cvar_MarkCustomMaps = FindConVar("mce_markcustommaps");
+
+	g_NativeVotes = LibraryExists(NV) && NativeVotes_IsVoteTypeSupported(NativeVotesType_NextLevelMult);
+	RegisterVoteHandler();
+}
+
+public OnLibraryAdded(const String:name[])
+{
+	if (StrEqual(name, NV) && NativeVotes_IsVoteTypeSupported(NativeVotesType_NextLevelMult))
+	{
+		g_NativeVotes = true;
+		RegisterVoteHandler();
+	}
+}
+
+public OnLibraryRemoved(const String:name[])
+{
+	if (StrEqual(name, NV))
+	{
+		g_NativeVotes = false;
+	}
+}
+
+RegisterVoteHandler()
+{
+	if (!g_NativeVotes)
+		return;
+		
+	NativeVotes_RegisterVoteCommand("NextLevel", Menu_Nominate);
 }
 
 public OnConfigsExecuted()
@@ -210,6 +244,16 @@ public Action:Command_Say(client, args)
 	return Plugin_Continue;	
 }
 
+public Action:Menu_Nominate(client, const String:voteCommand[], const String:voteArgument[], NativeVotesKickType:kickType, target)
+{
+	if (!client || !IsNominateAllowed(client, true))
+	{
+		return Plugin_Handled;
+	}
+	
+	return Internal_NominateCommand(client, voteArgument, true);
+}
+
 public Action:Command_Nominate(client, args)
 {
 	if (!client || !IsNominateAllowed(client))
@@ -226,9 +270,18 @@ public Action:Command_Nominate(client, args)
 	decl String:mapname[PLATFORM_MAX_PATH];
 	GetCmdArg(1, mapname, sizeof(mapname));
 	
+	return Internal_NominateCommand(client, mapname, false);
+}
+
+Action:Internal_NominateCommand(client, const String:mapname[], bool:isVoteMenu)
+{
 	new status;
 	if (!GetTrieValue(g_mapTrie, mapname, status))
 	{
+		if (isVoteMenu && g_NativeVotes)
+		{
+			NativeVotes_DisplayCallVoteFail(client, NativeVotesCallFail_MapNotFound);
+		}
 		CReplyToCommand(client, "%t", "Map was not found", mapname);
 		return Plugin_Handled;		
 	}
@@ -237,16 +290,28 @@ public Action:Command_Nominate(client, args)
 	{
 		if ((status & MAPSTATUS_EXCLUDE_CURRENT) == MAPSTATUS_EXCLUDE_CURRENT)
 		{
+			if (isVoteMenu && g_NativeVotes)
+			{
+				NativeVotes_DisplayCallVoteFail(client, NativeVotesCallFail_MapNotValid);
+			}
 			CReplyToCommand(client, "[NE] %t", "Can't Nominate Current Map");
 		}
 		
 		if ((status & MAPSTATUS_EXCLUDE_PREVIOUS) == MAPSTATUS_EXCLUDE_PREVIOUS)
 		{
+			if (isVoteMenu && g_NativeVotes)
+			{
+				NativeVotes_DisplayCallVoteFail(client, NativeVotesCallFail_MapNotValid);
+			}
 			CReplyToCommand(client, "[NE] %t", "Map in Exclude List");
 		}
 		
 		if ((status & MAPSTATUS_EXCLUDE_NOMINATED) == MAPSTATUS_EXCLUDE_NOMINATED)
 		{
+			if (isVoteMenu && g_NativeVotes)
+			{
+				NativeVotes_DisplayCallVoteFail(client, NativeVotesCallFail_MapNotValid);
+			}
 			CReplyToCommand(client, "[NE] %t", "Map Already Nominated");
 		}
 		
@@ -259,10 +324,18 @@ public Action:Command_Nominate(client, args)
 	{
 		if (result == Nominate_AlreadyInVote)
 		{
-			CReplyToCommand(client, "%t", "Map Already In Vote", mapname);
+			if (isVoteMenu && g_NativeVotes)
+			{
+				NativeVotes_DisplayCallVoteFail(client, NativeVotesCallFail_MapNotValid);
+			}
+			CReplyToCommand(client, "[NE] %t", "Map Already In Vote", mapname);
 		}
 		else
 		{
+			if (isVoteMenu && g_NativeVotes)
+			{
+				NativeVotes_DisplayCallVoteFail(client, NativeVotesCallFail_MapNotValid);
+			}
 			CReplyToCommand(client, "[NE] %t", "Map Already Nominated");
 		}
 		
@@ -277,8 +350,8 @@ public Action:Command_Nominate(client, args)
 	GetClientName(client, name, sizeof(name));
 	PrintToChatAll("[NE] %t", "Map Nominated", name, mapname);
 	LogMessage("%s nominated %s", name, mapname);
-
-	return Plugin_Continue;
+	
+	return Plugin_Handled;
 }
 
 AttemptNominate(client)
@@ -487,7 +560,7 @@ public Handler_MapSelectMenu(Handle:menu, MenuAction:action, param1, param2)
 	return 0;
 }
 
-stock bool:IsNominateAllowed(client)
+stock bool:IsNominateAllowed(client, bool:isVoteMenu=false)
 {
 	new CanNominateResult:result = CanNominate();
 	
@@ -503,12 +576,20 @@ stock bool:IsNominateAllowed(client)
 		{
 			new String:map[PLATFORM_MAX_PATH];
 			GetNextMap(map, sizeof(map));
+			if (isVoteMenu && g_NativeVotes)
+			{
+				NativeVotes_DisplayCallVoteFail(client, NativeVotesCallFail_LevelSet);
+			}
 			CReplyToCommand(client, "[NE] %t", "Next Map", map);
 			return false;
 		}
 		
 		case CanNominate_No_VoteFull:
 		{
+			if (isVoteMenu && g_NativeVotes)
+			{
+				NativeVotes_DisplayCallVoteFail(client, NativeVotesCallFail_Generic);				
+			}
 			CReplyToCommand(client, "[ME] %t", "Max Nominations");
 			return false;
 		}

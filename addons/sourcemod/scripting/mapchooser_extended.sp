@@ -56,8 +56,6 @@
 
 #define MCE_VERSION "1.10.1"
 
-#define NV "nativevotes"
-
 enum RoundCounting
 {
 	RoundCounting_Standard = 0,

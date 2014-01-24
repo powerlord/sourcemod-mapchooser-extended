@@ -38,6 +38,9 @@
 #include <nextmap>
 #include <colors>
 
+#undef REQUIRE_PLUGIN
+#include <nativevotes>
+
 #pragma semicolon 1
 
 #define MCE_VERSION "1.10.0"
@@ -67,6 +70,10 @@ new bool:g_Voted[MAXPLAYERS+1] = {false, ...};
 
 new bool:g_InChange = false;
 
+new bool:g_NativeVotes = false;
+
+#define NV "nativevotes"
+
 public OnPluginStart()
 {
 	LoadTranslations("common.phrases");
@@ -92,6 +99,35 @@ public OnPluginStart()
 	CreateConVar("rtve_version", MCE_VERSION, "Rock The Vote Extended Version", FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_NOTIFY|FCVAR_DONTRECORD);
 	
 	AutoExecConfig(true, "rtv");
+}
+
+public OnAllPluginsLoaded()
+{
+	g_NativeVotes = LibraryExists(NV) && NativeVotes_IsVoteTypeSupported(NativeVotesType_NextLevelMult);
+}
+
+public OnLibraryAdded(const String:name[])
+{
+	if (StrEqual(name, NV) && NativeVotes_IsVoteTypeSupported(NativeVotesType_NextLevelMult))
+	{
+		g_NativeVotes = true;
+	}
+}
+
+public OnLibraryRemoved(const String:name[])
+{
+	if (StrEqual(name, NV))
+	{
+		g_NativeVotes = false;
+	}
+}
+
+RegisterVoteHandler()
+{
+	if (!g_NativeVotes)
+		return;
+		
+	NativeVotes_RegisterVoteCommand("NextLevel", Menu_Nominate);
 }
 
 public OnMapStart()
