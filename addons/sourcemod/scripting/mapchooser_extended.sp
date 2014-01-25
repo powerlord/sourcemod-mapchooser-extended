@@ -208,6 +208,8 @@ enum WarningType
 #define LINE_SPACER "##linespacer##"
 #define FAILURE_TIMER_LENGTH 5
 
+#define NV "nativevotes"
+
 public OnPluginStart()
 {
 	LoadTranslations("mapchooser_extended.phrases");
@@ -1713,8 +1715,11 @@ CreateNextVote()
 	decl String:map[PLATFORM_MAX_PATH];
 	new Handle:tempMaps  = CloneArray(g_MapList);
 	
-	GetCurrentMap(map, PLATFORM_MAX_PATH);
-	RemoveStringFromArray(tempMaps, map);
+	if (GetConVarInt(g_Cvar_ExcludeMaps) > 0)
+	{
+		GetCurrentMap(map, PLATFORM_MAX_PATH);
+		RemoveStringFromArray(tempMaps, map);
+	}
 	
 	if (GetConVarInt(g_Cvar_ExcludeMaps) && GetArraySize(tempMaps) > GetConVarInt(g_Cvar_ExcludeMaps))
 	{
