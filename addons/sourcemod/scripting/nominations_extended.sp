@@ -105,13 +105,13 @@ public OnAllPluginsLoaded()
 	// This is an MCE cvar... this plugin requires MCE to be loaded.  Granted, this plugin SHOULD have an MCE dependency.
 	g_Cvar_MarkCustomMaps = FindConVar("mce_markcustommaps");
 
-	g_NativeVotes = LibraryExists(NV) && NativeVotes_IsVoteTypeSupported(NativeVotesType_NextLevelMult);
+	g_NativeVotes = LibraryExists(NV) && NativeVotes_IsVoteTypeSupported(NativeVotesType_NextLevelMult) && GetFeatureStatus(FeatureType_Native, "NativeVotes_IsVoteCommandRegistered") == FeatureStatus_Available;
 	RegisterVoteHandler();
 }
 
 public OnLibraryAdded(const String:name[])
 {
-	if (StrEqual(name, NV) && NativeVotes_IsVoteTypeSupported(NativeVotesType_NextLevelMult))
+	if (StrEqual(name, NV) && NativeVotes_IsVoteTypeSupported(NativeVotesType_NextLevelMult) && GetFeatureStatus(FeatureType_Native, "NativeVotes_IsVoteCommandRegistered") == FeatureStatus_Available)
 	{
 		g_NativeVotes = true;
 		RegisterVoteHandler();
@@ -132,6 +132,7 @@ RegisterVoteHandler()
 		return;
 		
 	NativeVotes_RegisterVoteCommand("NextLevel", Menu_Nominate);
+	NativeVotes_RegisterVoteCommand("ChangeLevel", Menu_Nominate);
 }
 
 public OnConfigsExecuted()

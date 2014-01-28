@@ -966,7 +966,7 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 	g_WaitingForVote = true;
 	g_WarningInProgress = false;
  
-	// Check if a nativevotes vots is in progress first
+	// Check if a nativevotes vote is in progress first
 	// NativeVotes running at the same time as a regular vote can cause hintbox problems,
 	// so always check for a standard vote
 	if (IsVoteInProgress() || (g_NativeVotes && NativeVotes_IsVoteInProgress()))

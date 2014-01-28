@@ -103,14 +103,16 @@ public OnPluginStart()
 
 public OnAllPluginsLoaded()
 {
-	g_NativeVotes = LibraryExists(NV) && NativeVotes_IsVoteTypeSupported(NativeVotesType_NextLevelMult);
+	g_NativeVotes = LibraryExists(NV) && NativeVotes_IsVoteTypeSupported(NativeVotesType_NextLevelMult) && GetFeatureStatus(FeatureType_Native, "NativeVotes_IsVoteCommandRegistered") == FeatureStatus_Available;
+	RegisterVoteHandler();
 }
 
 public OnLibraryAdded(const String:name[])
 {
-	if (StrEqual(name, NV) && NativeVotes_IsVoteTypeSupported(NativeVotesType_NextLevelMult))
+	if (StrEqual(name, NV) && NativeVotes_IsVoteTypeSupported(NativeVotesType_NextLevelMult) && GetFeatureStatus(FeatureType_Native, "NativeVotes_IsVoteCommandRegistered") == FeatureStatus_Available)
 	{
 		g_NativeVotes = true;
+		RegisterVoteHandler();
 	}
 }
 
@@ -124,10 +126,10 @@ public OnLibraryRemoved(const String:name[])
 
 RegisterVoteHandler()
 {
-	if (!g_NativeVotes)
+	if (!g_NativeVotes || NativeVotes_IsVoteCommandRegistered("ChangeLevel"))
 		return;
 		
-	NativeVotes_RegisterVoteCommand("NextLevel", Menu_Nominate);
+	NativeVotes_RegisterVoteCommand("ChangeLevel", Menu_RocktheVote);
 }
 
 public OnMapStart()
@@ -250,10 +252,14 @@ public Action:Command_Say(client, args)
 	return Plugin_Continue;	
 }
 
-AttemptRTV(client)
+AttemptRTV(client, bool:isVoteMenu=false)
 {
 	if (!g_RTVAllowed  || (GetConVarInt(g_Cvar_RTVPostVoteAction) == 1 && HasEndOfMapVoteFinished()))
 	{
+		if (isVoteMenu)
+		{
+			NativeVotes_DisplayCallVoteFail(client, NativeVotesCallFail_Generic);
+		}
 		CReplyToCommand(client, "[SM] %t", "RTV Not Allowed");
 		return;
 	}
@@ -266,12 +272,20 @@ AttemptRTV(client)
 	
 	if (GetClientCount(true) < GetConVarInt(g_Cvar_MinPlayers))
 	{
+		if (isVoteMenu)
+		{
+			NativeVotes_DisplayCallVoteFail(client, NativeVotesCallFail_Generic);
+		}
 		CReplyToCommand(client, "[SM] %t", "Minimal Players Not Met");
 		return;			
 	}
 	
 	if (g_Voted[client])
 	{
+		if (isVoteMenu)
+		{
+			NativeVotes_DisplayCallVoteFail(client, NativeVotesCallFail_Generic);
+		}
 		CReplyToCommand(client, "[SM] %t", "Already Voted", g_Votes, g_VotesNeeded);
 		return;
 	}	
@@ -295,7 +309,7 @@ public Action:Timer_DelayRTV(Handle:timer)
 	g_RTVAllowed = true;
 }
 
-StartRTV()
+StartRTV(bool:isVoteMenu=false)
 {
 	if (g_InChange)
 	{
