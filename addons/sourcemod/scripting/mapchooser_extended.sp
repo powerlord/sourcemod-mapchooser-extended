@@ -54,7 +54,7 @@
 #undef REQUIRE_PLUGIN
 #include <nativevotes>
 
-#define MCE_VERSION "1.10.1"
+#define MCE_VERSION "1.10.2"
 
 #define NV "nativevotes"
 
