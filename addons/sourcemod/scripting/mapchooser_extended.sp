@@ -1758,6 +1758,12 @@ NominateResult:InternalNominateMap(String:map[], bool:force, owner)
 		return Nominate_InvalidMap;
 	}
 	
+	/* Map already in the vote */
+	if (FindStringInArray(g_NominateList, map) != -1)
+	{
+		return Nominate_AlreadyInVote;	
+	}
+	
 	new index;
 
 	/* Look to replace an existing nomination by this client - Nominations made with owner = 0 aren't replaced */
@@ -1779,13 +1785,6 @@ NominateResult:InternalNominateMap(String:map[], bool:force, owner)
 	{
 		return Nominate_VoteFull;
 	}
-	
-	/* Map already in the vote */
-	if (FindStringInArray(g_NominateList, map) != -1)
-	{
-		return Nominate_AlreadyInVote;	
-	}
-	
 	
 	PushArrayString(g_NominateList, map);
 	PushArrayCell(g_NominateOwners, owner);
