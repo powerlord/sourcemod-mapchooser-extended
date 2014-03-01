@@ -300,7 +300,7 @@ Action:Internal_NominateCommand(client, const String:mapname[], bool:isVoteMenu)
 	{
 		if (isVoteMenu && g_NativeVotes)
 		{
-			NativeVotes_DisplayCallVoteFail(client, NativeVotesCallFail_MapNotFound);
+			NativeVotes_DisplayCallVoteFail(client, NativeVotesCallFail_MapNotValid);
 		}
 		CReplyToCommand(client, "[NE] %t", "Map was not found", mapname);
 		return Plugin_Handled;		
