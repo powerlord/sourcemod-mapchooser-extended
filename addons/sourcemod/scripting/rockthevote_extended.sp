@@ -147,7 +147,11 @@ public Action:Menu_RocktheVote(client, const String:voteCommand[], const String:
 		return Plugin_Handled;
 	}
 	
+	new ReplySource:old = SetCmdReplySource(SM_REPLY_TO_CHAT);
+
 	AttemptRTV(client, true);
+	
+	SetCmdReplySource(old);
 	
 	return Plugin_Handled;
 }
@@ -276,10 +280,12 @@ AttemptRTV(client, bool:isVoteMenu=false)
 {
 	if (!g_RTVAllowed  || (GetConVarInt(g_Cvar_RTVPostVoteAction) == 1 && HasEndOfMapVoteFinished()))
 	{
+		/*
 		if (isVoteMenu)
 		{
 			NativeVotes_DisplayCallVoteFail(client, NativeVotesCallFail_Generic);
 		}
+		*/
 		CReplyToCommand(client, "[SM] %t", "RTV Not Allowed");
 		return;
 	}
@@ -292,20 +298,24 @@ AttemptRTV(client, bool:isVoteMenu=false)
 	
 	if (GetClientCount(true) < GetConVarInt(g_Cvar_MinPlayers))
 	{
+		/*
 		if (isVoteMenu)
 		{
 			NativeVotes_DisplayCallVoteFail(client, NativeVotesCallFail_Generic);
 		}
+		*/
 		CReplyToCommand(client, "[SM] %t", "Minimal Players Not Met");
 		return;			
 	}
 	
 	if (g_Voted[client])
 	{
+		/*
 		if (isVoteMenu)
 		{
 			NativeVotes_DisplayCallVoteFail(client, NativeVotesCallFail_Generic);
 		}
+		*/
 		CReplyToCommand(client, "[SM] %t", "Already Voted", g_Votes, g_VotesNeeded);
 		return;
 	}	
