@@ -107,6 +107,14 @@ public OnAllPluginsLoaded()
 	RegisterVoteHandler();
 }
 
+public OnPluginEnd()
+{
+	if (g_NativeVotes)
+	{
+		NativeVotes_UnregisterVoteCommand("ChangeLevel", Menu_RocktheVote);
+	}
+}
+
 public OnLibraryAdded(const String:name[])
 {
 	if (StrEqual(name, NV) && NativeVotes_IsVoteTypeSupported(NativeVotesType_NextLevelMult) && GetFeatureStatus(FeatureType_Native, "NativeVotes_IsVoteCommandRegistered") == FeatureStatus_Available)
