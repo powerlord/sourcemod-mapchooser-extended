@@ -260,8 +260,14 @@ public Action:Command_Say(client, args)
 
 public Action:Menu_Nominate(client, const String:voteCommand[], const String:voteArgument[], NativeVotesKickType:kickType, target)
 {
-	if (!client || !IsNominateAllowed(client, true))
+	if (!client || NativeVotes_IsVoteInProgress() || !IsNominateAllowed(client, true))
 	{
+		return Plugin_Handled;
+	}
+	
+	if (strlen(voteArgument) == 0)
+	{
+		NativeVotes_DisplayCallVoteFail(client, NativeVotesCallFail_SpecifyMap);
 		return Plugin_Handled;
 	}
 	

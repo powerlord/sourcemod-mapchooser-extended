@@ -148,7 +148,7 @@ RegisterVoteHandler()
 
 public Action:Menu_RocktheVote(client, const String:voteCommand[], const String:voteArgument[], NativeVotesKickType:kickType, target)
 {
-	if (!g_CanRTV || !client)
+	if (!g_CanRTV || !client || NativeVotes_IsVoteInProgress())
 	{
 		return Plugin_Handled;
 	}
