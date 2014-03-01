@@ -71,7 +71,9 @@ new bool:g_Voted[MAXPLAYERS+1] = {false, ...};
 new bool:g_InChange = false;
 
 new bool:g_NativeVotes = false;
+new bool:g_RegisteredMenus = false;
 
+new g_RTVTime = 0;
 #define NV "nativevotes"
 
 public OnPluginStart()
@@ -112,6 +114,7 @@ public OnPluginEnd()
 	if (g_NativeVotes)
 	{
 		NativeVotes_UnregisterVoteCommand("ChangeLevel", Menu_RocktheVote);
+		NativeVotes_UnregisterVoteCommand("RockTheVote", Menu_RocktheVote);
 	}
 }
 
@@ -134,15 +137,18 @@ public OnLibraryRemoved(const String:name[])
 
 RegisterVoteHandler()
 {
-	if (!g_NativeVotes)
+	if (!g_NativeVotes || g_RegisteredMenus)
 		return;
 		
+	g_RegisteredMenus = true;
+	
 	NativeVotes_RegisterVoteCommand("ChangeLevel", Menu_RocktheVote);
+	NativeVotes_RegisterVoteCommand("RockTheVote", Menu_RocktheVote);
 }
 
 public Action:Menu_RocktheVote(client, const String:voteCommand[], const String:voteArgument[], NativeVotesKickType:kickType, target)
 {
-	if (!client)
+	if (!g_CanRTV || !client)
 	{
 		return Plugin_Handled;
 	}
@@ -183,6 +189,7 @@ public OnConfigsExecuted()
 {	
 	g_CanRTV = true;
 	g_RTVAllowed = false;
+	g_RTVTime = GetTime() + GetConVarInt(g_Cvar_InitialDelay);
 	CreateTimer(GetConVarFloat(g_Cvar_InitialDelay), Timer_DelayRTV, _, TIMER_FLAG_NO_MAPCHANGE);
 }
 
@@ -278,45 +285,39 @@ public Action:Command_Say(client, args)
 
 AttemptRTV(client, bool:isVoteMenu=false)
 {
-	if (!g_RTVAllowed  || (GetConVarInt(g_Cvar_RTVPostVoteAction) == 1 && HasEndOfMapVoteFinished()))
-	{
-		/*
-		if (isVoteMenu)
-		{
-			NativeVotes_DisplayCallVoteFail(client, NativeVotesCallFail_Generic);
-		}
-		*/
-		CReplyToCommand(client, "[SM] %t", "RTV Not Allowed");
-		return;
-	}
-		
 	if (!CanMapChooserStartVote())
 	{
-		CReplyToCommand(client, "[SM] %t", "RTV Started");
+		CReplyToCommand(client, "[RTVE] %t", "RTV Started");
 		return;
 	}
 	
+	if (!g_RTVAllowed  || (GetConVarInt(g_Cvar_RTVPostVoteAction) == 1 && HasEndOfMapVoteFinished()))
+	{
+		if (isVoteMenu && g_NativeVotes)
+		{
+			NativeVotes_DisplayCallVoteFail(client, NativeVotesCallFail_Failed, g_RTVTime - GetTime());
+		}
+		CReplyToCommand(client, "[RTVE] %t", "RTV Not Allowed");
+		return;
+	}
+		
 	if (GetClientCount(true) < GetConVarInt(g_Cvar_MinPlayers))
 	{
-		/*
-		if (isVoteMenu)
+		if (isVoteMenu && g_NativeVotes)
 		{
-			NativeVotes_DisplayCallVoteFail(client, NativeVotesCallFail_Generic);
+			NativeVotes_DisplayCallVoteFail(client, NativeVotesCallFail_Loading);
 		}
-		*/
-		CReplyToCommand(client, "[SM] %t", "Minimal Players Not Met");
+		CReplyToCommand(client, "[RTVE] %t", "Minimal Players Not Met");
 		return;			
 	}
 	
 	if (g_Voted[client])
 	{
-		/*
-		if (isVoteMenu)
+		if (isVoteMenu && g_NativeVotes)
 		{
 			NativeVotes_DisplayCallVoteFail(client, NativeVotesCallFail_Generic);
 		}
-		*/
-		CReplyToCommand(client, "[SM] %t", "Already Voted", g_Votes, g_VotesNeeded);
+		CReplyToCommand(client, "[RTVE] %t", "Already Voted", g_Votes, g_VotesNeeded);
 		return;
 	}	
 	
@@ -326,7 +327,7 @@ AttemptRTV(client, bool:isVoteMenu=false)
 	g_Votes++;
 	g_Voted[client] = true;
 	
-	CPrintToChatAll("[SM] %t", "RTV Requested", name, g_Votes, g_VotesNeeded);
+	CPrintToChatAll("[RTVE] %t", "RTV Requested", name, g_Votes, g_VotesNeeded);
 	
 	if (g_Votes >= g_VotesNeeded)
 	{
@@ -352,7 +353,7 @@ StartRTV()
 		new String:map[PLATFORM_MAX_PATH];
 		if (GetNextMap(map, sizeof(map)))
 		{
-			CPrintToChatAll("[SM] %t", "Changing Maps", map);
+			CPrintToChatAll("[RTVE] %t", "Changing Maps", map);
 			CreateTimer(5.0, Timer_ChangeMap, _, TIMER_FLAG_NO_MAPCHANGE);
 			g_InChange = true;
 			
@@ -371,6 +372,7 @@ StartRTV()
 		ResetRTV();
 		
 		g_RTVAllowed = false;
+		g_RTVTime = GetTime() + GetConVarInt(g_Cvar_Interval);
 		CreateTimer(GetConVarFloat(g_Cvar_Interval), Timer_DelayRTV, _, TIMER_FLAG_NO_MAPCHANGE);
 	}
 }

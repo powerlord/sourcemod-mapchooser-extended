@@ -71,6 +71,7 @@ new Handle:g_mapTrie;
 new Handle:g_Cvar_MarkCustomMaps = INVALID_HANDLE;
 
 new bool:g_NativeVotes = false;
+new bool:g_RegisteredMenus = false;
 
 #define NV "nativevotes"
 
@@ -132,16 +133,17 @@ public OnLibraryRemoved(const String:name[])
 	if (StrEqual(name, NV))
 	{
 		g_NativeVotes = false;
-		NativeVotes_UnregisterVoteCommand("NextLevel", Menu_Nominate);
-		NativeVotes_UnregisterVoteCommand("ChangeLevel", Menu_Nominate);
+		g_RegisteredMenus = false;
 	}
 }
 
 RegisterVoteHandler()
 {
-	if (!g_NativeVotes)
+	if (!g_NativeVotes || g_RegisteredMenus)
 		return;
 		
+	g_RegisteredMenus = true;
+	
 	NativeVotes_RegisterVoteCommand("NextLevel", Menu_Nominate);
 	NativeVotes_RegisterVoteCommand("ChangeLevel", Menu_Nominate);
 }
@@ -263,7 +265,13 @@ public Action:Menu_Nominate(client, const String:voteCommand[], const String:vot
 		return Plugin_Handled;
 	}
 	
-	return Internal_NominateCommand(client, voteArgument, true);
+	new ReplySource:old = SetCmdReplySource(SM_REPLY_TO_CHAT);
+	
+	new Action:myReturn = Internal_NominateCommand(client, voteArgument, true);
+	
+	SetCmdReplySource(old);
+	
+	return myReturn;
 }
 
 public Action:Command_Nominate(client, args)
@@ -294,7 +302,7 @@ Action:Internal_NominateCommand(client, const String:mapname[], bool:isVoteMenu)
 		{
 			NativeVotes_DisplayCallVoteFail(client, NativeVotesCallFail_MapNotFound);
 		}
-		CReplyToCommand(client, "%t", "Map was not found", mapname);
+		CReplyToCommand(client, "[NE] %t", "Map was not found", mapname);
 		return Plugin_Handled;		
 	}
 	
