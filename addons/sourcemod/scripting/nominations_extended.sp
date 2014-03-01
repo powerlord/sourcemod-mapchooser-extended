@@ -41,7 +41,7 @@
 #undef REQUIRE_PLUGIN
 #include <nativevotes>
 
-#define MCE_VERSION "1.10.0"
+#define MCE_VERSION "1.11.0 beta 1"
 
 public Plugin:myinfo =
 {
@@ -109,6 +109,15 @@ public OnAllPluginsLoaded()
 	RegisterVoteHandler();
 }
 
+public OnPluginEnd()
+{
+	if (g_NativeVotes)
+	{
+		NativeVotes_UnregisterVoteCommand("NextLevel", Menu_Nominate);
+		NativeVotes_UnregisterVoteCommand("ChangeLevel", Menu_Nominate);
+	}
+}
+
 public OnLibraryAdded(const String:name[])
 {
 	if (StrEqual(name, NV) && NativeVotes_IsVoteTypeSupported(NativeVotesType_NextLevelMult) && GetFeatureStatus(FeatureType_Native, "NativeVotes_IsVoteCommandRegistered") == FeatureStatus_Available)
@@ -123,6 +132,8 @@ public OnLibraryRemoved(const String:name[])
 	if (StrEqual(name, NV))
 	{
 		g_NativeVotes = false;
+		NativeVotes_UnregisterVoteCommand("NextLevel", Menu_Nominate);
+		NativeVotes_UnregisterVoteCommand("ChangeLevel", Menu_Nominate);
 	}
 }
 

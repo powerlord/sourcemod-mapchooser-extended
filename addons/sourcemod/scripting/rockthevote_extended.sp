@@ -43,7 +43,7 @@
 
 #pragma semicolon 1
 
-#define MCE_VERSION "1.10.0"
+#define MCE_VERSION "1.11.0 beta 1"
 
 public Plugin:myinfo =
 {
@@ -126,10 +126,22 @@ public OnLibraryRemoved(const String:name[])
 
 RegisterVoteHandler()
 {
-	if (!g_NativeVotes || NativeVotes_IsVoteCommandRegistered("ChangeLevel"))
+	if (!g_NativeVotes)
 		return;
 		
 	NativeVotes_RegisterVoteCommand("ChangeLevel", Menu_RocktheVote);
+}
+
+public Action:Menu_RocktheVote(client, const String:voteCommand[], const String:voteArgument[], NativeVotesKickType:kickType, target)
+{
+	if (!client)
+	{
+		return Plugin_Handled;
+	}
+	
+	AttemptRTV(client, true);
+	
+	return Plugin_Handled;
 }
 
 public OnMapStart()
@@ -309,7 +321,7 @@ public Action:Timer_DelayRTV(Handle:timer)
 	g_RTVAllowed = true;
 }
 
-StartRTV(bool:isVoteMenu=false)
+StartRTV()
 {
 	if (g_InChange)
 	{
