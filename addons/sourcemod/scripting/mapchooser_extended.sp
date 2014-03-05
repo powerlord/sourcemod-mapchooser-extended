@@ -54,7 +54,7 @@
 #undef REQUIRE_PLUGIN
 #include <nativevotes>
 
-#define MCE_VERSION "1.10.2"
+#define MCE_VERSION "1.11.0 beta 1"
 
 enum RoundCounting
 {
@@ -375,12 +375,6 @@ public OnPluginStart()
 
 public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 {
-	if (LibraryExists("mapchooser"))
-	{
-		strcopy(error, err_max, "MapChooser already loaded, aborting.");
-		return APLRes_Failure;
-	}
-	
 	RegPluginLibrary("mapchooser");	
 	
 	MarkNativeAsOptional("GetEngineVersion");
@@ -404,6 +398,11 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 
 public OnAllPluginsLoaded()
 {
+	if (FindPluginByFile("mapchooser.smx") != INVALID_HANDLE)
+	{
+		SetFailState("This plugin replaces mapchooser.  You cannot run both at once.");
+	}
+	
 	g_NativeVotes = LibraryExists(NV) && NativeVotes_IsVoteTypeSupported(NativeVotesType_NextLevelMult);
 }
 

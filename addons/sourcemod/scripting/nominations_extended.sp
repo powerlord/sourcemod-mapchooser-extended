@@ -103,6 +103,11 @@ public OnPluginStart()
 
 public OnAllPluginsLoaded()
 {
+	if (FindPluginByFile("nominations.smx") != INVALID_HANDLE)
+	{
+		SetFailState("This plugin replaces nominations.  You cannot run both at once.");
+	}
+	
 	// This is an MCE cvar... this plugin requires MCE to be loaded.  Granted, this plugin SHOULD have an MCE dependency.
 	g_Cvar_MarkCustomMaps = FindConVar("mce_markcustommaps");
 

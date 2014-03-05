@@ -105,6 +105,11 @@ public OnPluginStart()
 
 public OnAllPluginsLoaded()
 {
+	if (FindPluginByFile("rockthevote.smx") != INVALID_HANDLE)
+	{
+		SetFailState("This plugin replaces rockthevote.  You cannot run both at once.");
+	}
+	
 	g_NativeVotes = LibraryExists(NV) && NativeVotes_IsVoteTypeSupported(NativeVotesType_NextLevelMult) && GetFeatureStatus(FeatureType_Native, "NativeVotes_IsVoteCommandRegistered") == FeatureStatus_Available;
 	RegisterVoteHandler();
 }
