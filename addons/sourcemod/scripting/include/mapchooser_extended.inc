@@ -5,7 +5,7 @@
  * Creates a map vote at appropriate times, setting sm_nextmap to the winning
  * vote
  *
- * MapChooser Extended (C)2011-2013 Powerlord (Ross Bemrose)
+ * MapChooser Extended (C)2011-2014 Powerlord (Ross Bemrose)
  * SourceMod (C)2004-2007 AlliedModders LLC.  All rights reserved.
  * =============================================================================
  *

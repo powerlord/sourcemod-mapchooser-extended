@@ -4,7 +4,7 @@
  * Rock The Vote Extended
  * Creates a map vote when the required number of players have requested one.
  *
- * Rock The Vote Extended (C)2012-2013 Powerlord (Ross Bemrose)
+ * Rock The Vote Extended (C)2012-2014 Powerlord (Ross Bemrose)
  * SourceMod (C)2004-2007 AlliedModders LLC.  All rights reserved.
  * =============================================================================
  *

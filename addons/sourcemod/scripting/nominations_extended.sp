@@ -4,7 +4,7 @@
  * Nominations Extended
  * Allows players to nominate maps for Mapchooser
  *
- * Nominations Extended (C)2012-2013 Powerlord (Ross Bemrose)
+ * Nominations Extended (C)2012-2014 Powerlord (Ross Bemrose)
  * SourceMod (C)2004-2007 AlliedModders LLC.  All rights reserved.
  * =============================================================================
  *
