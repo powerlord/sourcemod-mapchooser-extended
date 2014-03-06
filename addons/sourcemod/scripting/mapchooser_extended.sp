@@ -135,7 +135,6 @@ new bool:g_ChangeMapInProgress;
 new bool:g_HasIntermissionStarted = false;
 new g_mapFileSerial = -1;
 
-new g_NominateCount = 0;
 new MapChange:g_ChangeTime;
 
 new Handle:g_NominationsResetForward = INVALID_HANDLE;
@@ -472,7 +471,6 @@ public OnConfigsExecuted()
 	
 	g_MapVoteCompleted = false;
 	
-	g_NominateCount = 0;
 	ClearArray(g_NominateList);
 	ClearArray(g_NominateOwners);
 	
@@ -534,7 +532,6 @@ public OnClientDisconnect(client)
 	
 	RemoveFromArray(g_NominateOwners, index);
 	RemoveFromArray(g_NominateList, index);
-	g_NominateCount--;
 }
 
 public Action:Command_SetNextmap(client, args)
@@ -1196,7 +1193,6 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 		}
 		
 		/* Wipe out our nominations list - Nominations have already been informed of this */
-		g_NominateCount = 0;
 		ClearArray(g_NominateOwners);
 		ClearArray(g_NominateList);
 		
@@ -1781,14 +1777,13 @@ NominateResult:InternalNominateMap(String:map[], bool:force, owner)
 	}
 	
 	/* Too many nominated maps. */
-	if (g_NominateCount >= GetVoteSize() && !force)
+	if (GetArraySize(g_NominateList) >= GetVoteSize() && !force)
 	{
 		return Nominate_VoteFull;
 	}
 	
 	PushArrayString(g_NominateList, map);
 	PushArrayCell(g_NominateOwners, owner);
-	g_NominateCount++;
 	
 	while (GetArraySize(g_NominateList) > GetVoteSize())
 	{
@@ -1841,7 +1836,6 @@ bool:InternalRemoveNominationByMap(String:map[])
 
 			RemoveFromArray(g_NominateList, i);
 			RemoveFromArray(g_NominateOwners, i);
-			g_NominateCount--;
 
 			return true;
 		}
@@ -1883,7 +1877,6 @@ bool:InternalRemoveNominationByOwner(owner)
 
 		RemoveFromArray(g_NominateList, index);
 		RemoveFromArray(g_NominateOwners, index);
-		g_NominateCount--;
 
 		return true;
 	}
@@ -2133,7 +2126,7 @@ public Native_CanNominate(Handle:plugin, numParams)
 		return _:CanNominate_No_VoteComplete;
 	}
 	
-	if (g_NominateCount >= GetVoteSize())
+	if (GetArraySize(g_NominateList) >= GetVoteSize())
 	{
 		return _:CanNominate_No_VoteFull;
 	}
