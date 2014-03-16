@@ -38,8 +38,9 @@
 #include <mapchooser>
 #include "include/mapchooser_extended"
 #include <sdktools>
+#include <emitsoundany>
 
-#define VERSION "1.10.1"
+#define VERSION "1.10.2"
 
 #define CONFIG_FILE "configs/mapchooser_extended/sounds.cfg"
 #define CONFIG_DIRECTORY "configs/mapchooser_extended/sounds"
@@ -68,8 +69,6 @@ new Handle:g_CurrentSoundSet = INVALID_HANDLE; // Lazy "pointer" to the current 
 
 //Global variables
 new bool:g_DownloadAllSounds;
-
-new bool:g_bNeedsFakePrecache = false;
 
 enum SoundEvent
 {
@@ -141,13 +140,6 @@ public OnPluginStart()
 	g_SoundFiles = CreateTrie();
 	LoadSounds();
 	HookConVarChange(g_Cvar_SoundSet, SoundSetChanged);
-	
-	new EngineVersion:engVersion = GetEngineVersion();
-	if (engVersion == Engine_CSGO || engVersion == Engine_DOTA)
-//	if (engVersion == Engine_CSGO)
-	{
-		g_bNeedsFakePrecache = true;
-	}
 }
 
 // Not sure this is required, but there were some weird crashes when this plugin was unloaded.  This is an attempt to fix that.
@@ -603,134 +595,4 @@ stock CloseSoundArrayHandles()
 	}
 	ClearTrie(g_SoundFiles);
 	ClearArray(g_SetNames);
-}
-
-stock bool:PrecacheSoundAny( const String:szPath[] )
-{
-	if (g_bNeedsFakePrecache)
-	{
-		return FakePrecacheSoundEx(szPath);
-	}
-	else
-	{
-		return PrecacheSound(szPath);
-	}
-}
-
-stock bool:FakePrecacheSoundEx( const String:szPath[] )
-{
-	decl String:szPathStar[PLATFORM_MAX_PATH];
-	Format(szPathStar, sizeof(szPathStar), "*%s", szPath);
-	
-	AddToStringTable( FindStringTable( "soundprecache" ), szPathStar );
-	return true;
-}
-
-stock EmitSoundAny(const clients[], 
-                 numClients, 
-                 const String:sample[], 
-                 entity = SOUND_FROM_PLAYER, 
-                 channel = SNDCHAN_AUTO, 
-                 level = SNDLEVEL_NORMAL, 
-                 flags = SND_NOFLAGS, 
-                 Float:volume = SNDVOL_NORMAL, 
-                 pitch = SNDPITCH_NORMAL, 
-                 speakerentity = -1, 
-                 const Float:origin[3] = NULL_VECTOR, 
-                 const Float:dir[3] = NULL_VECTOR, 
-                 bool:updatePos = true, 
-                 Float:soundtime = 0.0)
-{
-	decl String:szSound[PLATFORM_MAX_PATH];
-	
-	if (g_bNeedsFakePrecache)
-	{
-		Format(szSound, sizeof(szSound), "*%s", sample);
-	}
-	else
-	{
-		strcopy(szSound, sizeof(szSound), sample);
-	}
-	
-	EmitSound(clients, numClients, szSound, entity, channel, level, flags, volume, pitch, speakerentity, origin, dir, updatePos, soundtime);	
-}
-
-stock EmitSoundToClientAny(client,
-				 const String:sample[],
-				 entity = SOUND_FROM_PLAYER,
-				 channel = SNDCHAN_AUTO,
-				 level = SNDLEVEL_NORMAL,
-				 flags = SND_NOFLAGS,
-				 Float:volume = SNDVOL_NORMAL,
-				 pitch = SNDPITCH_NORMAL,
-				 speakerentity = -1,
-				 const Float:origin[3] = NULL_VECTOR,
-				 const Float:dir[3] = NULL_VECTOR,
-				 bool:updatePos = true,
-				 Float:soundtime = 0.0)
-{
-	new clients[1];
-	clients[0] = client;
-	/* Save some work for SDKTools and remove SOUND_FROM_PLAYER references */
-	entity = (entity == SOUND_FROM_PLAYER) ? client : entity;
-	EmitSoundAny(clients, 1, sample, entity, channel, 
-	level, flags, volume, pitch, speakerentity,
-	origin, dir, updatePos, soundtime);
-}
-
-stock EmitSoundToAllAny(const String:sample[], 
-                 entity = SOUND_FROM_PLAYER, 
-                 channel = SNDCHAN_AUTO, 
-                 level = SNDLEVEL_NORMAL, 
-                 flags = SND_NOFLAGS, 
-                 Float:volume = SNDVOL_NORMAL, 
-                 pitch = SNDPITCH_NORMAL, 
-                 speakerentity = -1, 
-                 const Float:origin[3] = NULL_VECTOR, 
-                 const Float:dir[3] = NULL_VECTOR, 
-                 bool:updatePos = true, 
-                 Float:soundtime = 0.0)
-{
-	new clients[MaxClients];
-	new total = 0;
-	
-	for (new i=1; i<=MaxClients; i++)
-	{
-		if (IsClientInGame(i))
-		{
-			clients[total++] = i;
-		}
-	}
-	
-	if (!total)
-	{
-		return;
-	}
-	
-	EmitSoundAny(clients, total, sample, entity, channel, 
-	level, flags, volume, pitch, speakerentity,
-	origin, dir, updatePos, soundtime);
-}
-
-stock EmitAmbientSoundAny(const String:name[],
-						const Float:pos[3],
-						entity = SOUND_FROM_WORLD,
-						level = SNDLEVEL_NORMAL,
-						flags = SND_NOFLAGS,
-						Float:vol = SNDVOL_NORMAL,
-						pitch = SNDPITCH_NORMAL,
-						Float:delay = 0.0)
-{
-	decl String:szSound[PLATFORM_MAX_PATH];
-	
-	if (g_bNeedsFakePrecache)
-	{
-		Format(szSound, sizeof(szSound), "*%s", sample);
-	}
-	else
-	{
-		strcopy(szSound, sizeof(szSound), sample);
-	}
-	
-	EmitAmbientSound(szSound, pos, entity, level, flags, vol, pitch, delay);
 }
