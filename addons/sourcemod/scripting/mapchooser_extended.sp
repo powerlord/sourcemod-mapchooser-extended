@@ -209,6 +209,8 @@ enum WarningType
 
 #define NV "nativevotes"
 
+new EngineVersion:g_EngineVersion;
+
 public OnPluginStart()
 {
 	LoadTranslations("mapchooser_extended.phrases");
@@ -270,14 +272,14 @@ public OnPluginStart()
 	g_Cvar_Maxrounds = FindConVar("mp_maxrounds");
 	g_Cvar_Fraglimit = FindConVar("mp_fraglimit");
 	
-	new EngineVersion:version = GetEngineVersion();
+	g_EngineVersion = GetEngineVersion();
 	
 	decl String:mapListPath[PLATFORM_MAX_PATH];
 	
 	BuildPath(Path_SM, mapListPath, PLATFORM_MAX_PATH, "configs/mapchooser_extended/maps/%s.txt", g_GameModName);
 	SetMapListCompatBind("official", mapListPath);
 
-	switch (version)
+	switch (g_EngineVersion)
 	{
 		case Engine_TF2:
 		{
@@ -311,7 +313,7 @@ public OnPluginStart()
 
 	if (g_Cvar_Winlimit != INVALID_HANDLE || g_Cvar_Maxrounds != INVALID_HANDLE)
 	{
-		switch (version)
+		switch (g_EngineVersion)
 		{
 			case Engine_TF2:
 			{
@@ -427,12 +429,12 @@ public OnMapStart()
 	g_RoundCounting = RoundCounting_Standard;
 	g_ObjectiveEnt = -1;
 	
-	if (strcmp(folder, "tf") == 0 && GameRules_GetProp("m_bPlayingMannVsMachine"))
+	if (g_EngineVersion == Engine_TF2 && GameRules_GetProp("m_bPlayingMannVsMachine"))
 	{
 		g_RoundCounting = RoundCounting_MvM;
 		g_ObjectiveEnt = EntIndexToEntRef(FindEntityByClassname(-1, "tf_objective_resource"));
 	}
-	else if (strcmp(folder, "csgo") == 0 && GetConVarInt(g_Cvar_GameType) == GameType_GunGame &&
+	else if (g_EngineVersion == Engine_CSGO && GetConVarInt(g_Cvar_GameType) == GameType_GunGame &&
 		GetConVarInt(g_Cvar_GameMode) == GunGameMode_ArmsRace)
 	{
 		g_RoundCounting = RoundCounting_ArmsRace;
