@@ -41,7 +41,7 @@
 #undef REQUIRE_PLUGIN
 #include <nativevotes>
 
-#define MCE_VERSION "1.11.0 beta 1"
+#define MCE_VERSION "1.11.0 beta 2"
 
 public Plugin:myinfo =
 {
@@ -54,6 +54,9 @@ public Plugin:myinfo =
 
 new Handle:g_Cvar_ExcludeOld = INVALID_HANDLE;
 new Handle:g_Cvar_ExcludeCurrent = INVALID_HANDLE;
+
+new Handle:g_Cvar_NVNextLevel = INVALID_HANDLE;
+new Handle:g_Cvar_NVChangeLevel = INVALID_HANDLE;
 
 new Handle:g_MapList = INVALID_HANDLE;
 new Handle:g_MapMenu = INVALID_HANDLE;
@@ -71,7 +74,8 @@ new Handle:g_mapTrie;
 new Handle:g_Cvar_MarkCustomMaps = INVALID_HANDLE;
 
 new bool:g_NativeVotes = false;
-new bool:g_RegisteredMenus = false;
+new bool:g_RegisteredMenusChangeLevel = false;
+new bool:g_RegisteredMenusNextLevel = false;
 
 #define NV "nativevotes"
 
@@ -85,8 +89,8 @@ public OnPluginStart()
 	new arraySize = ByteCountToCells(PLATFORM_MAX_PATH);	
 	g_MapList = CreateArray(arraySize);
 	
-	g_Cvar_ExcludeOld = CreateConVar("sm_nominate_excludeold", "1", "Specifies if the current map should be excluded from the Nominations list", 0, true, 0.00, true, 1.0);
-	g_Cvar_ExcludeCurrent = CreateConVar("sm_nominate_excludecurrent", "1", "Specifies if the MapChooser excluded maps should also be excluded from Nominations", 0, true, 0.00, true, 1.0);
+	g_Cvar_ExcludeOld = CreateConVar("ne_excludeold", "1", "Specifies if the current map should be excluded from the Nominations list", 0, true, 0.00, true, 1.0);
+	g_Cvar_ExcludeCurrent = CreateConVar("ne_excludecurrent", "1", "Specifies if the MapChooser excluded maps should also be excluded from Nominations", 0, true, 0.00, true, 1.0);
 	
 	RegConsoleCmd("say", Command_Say);
 	RegConsoleCmd("say_team", Command_Say);
@@ -97,7 +101,14 @@ public OnPluginStart()
 	
 	// Nominations Extended cvars
 	CreateConVar("ne_version", MCE_VERSION, "Nominations Extended Version", FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_NOTIFY|FCVAR_DONTRECORD);
-
+	g_Cvar_NVChangeLevel = CreateConVar("ne_nativevotes_changelevel", "1", "TF2: Add ChangeLevel to NativeVotes 1.0 vote menu.", FCVAR_PLUGIN, true, 0.0, true, 1.0);
+	g_Cvar_NVNextLevel = CreateConVar("ne_nativevotes_nextlevel", "1", "TF2: Add NextLevel to NativeVotes 1.0 vote menu.", FCVAR_PLUGIN, true, 0.0, true, 1.0);
+	
+	HookConVarChange(g_Cvar_NVChangeLevel, Cvar_ChangeLevel);
+	HookConVarChange(g_Cvar_NVNextLevel, Cvar_NextLevel);
+	
+	AutoExecConfig(true, "nominations_extended");
+	
 	g_mapTrie = CreateTrie();
 }
 
@@ -119,8 +130,15 @@ public OnPluginEnd()
 {
 	if (g_NativeVotes)
 	{
-		NativeVotes_UnregisterVoteCommand("NextLevel", Menu_Nominate);
-		NativeVotes_UnregisterVoteCommand("ChangeLevel", Menu_Nominate);
+		if (g_RegisteredMenusNextLevel)
+		{
+			NativeVotes_UnregisterVoteCommand("NextLevel", Menu_Nominate);
+		}
+		
+		if (g_RegisteredMenusChangeLevel)
+		{
+			NativeVotes_UnregisterVoteCommand("ChangeLevel", Menu_Nominate);
+		}
 	}
 }
 
@@ -138,19 +156,67 @@ public OnLibraryRemoved(const String:name[])
 	if (StrEqual(name, NV))
 	{
 		g_NativeVotes = false;
-		g_RegisteredMenus = false;
+		g_RegisteredMenusNextLevel = false;
+		g_RegisteredMenusChangeLevel = false;
+	}
+}
+
+public Cvar_ChangeLevel(Handle:convar, const String:oldValue[], const String:newValue[])
+{
+	if (GetConVarBool(g_Cvar_NVChangeLevel))
+	{
+		if (!g_RegisteredMenusChangeLevel)
+		{
+			NativeVotes_RegisterVoteCommand("ChangeLevel", Menu_Nominate);
+			g_RegisteredMenusChangeLevel = true;
+		}
+	}
+	else
+	{
+		if (g_RegisteredMenusChangeLevel)
+		{
+			NativeVotes_UnregisterVoteCommand("ChangeLevel", Menu_Nominate);		
+			g_RegisteredMenusChangeLevel = false;
+		}
+	}
+}
+
+public Cvar_NextLevel(Handle:convar, const String:oldValue[], const String:newValue[])
+{
+	if (GetConVarBool(g_Cvar_NVNextLevel))
+	{
+		if (!g_RegisteredMenusNextLevel)
+		{
+			NativeVotes_RegisterVoteCommand("RockTheVote", Menu_Nominate);
+			g_RegisteredMenusNextLevel = true;
+		}
+	}
+	else
+	{
+		if (g_RegisteredMenusNextLevel)
+		{
+			NativeVotes_UnregisterVoteCommand("RockTheVote", Menu_Nominate);		
+			g_RegisteredMenusNextLevel = false;
+		}
 	}
 }
 
 RegisterVoteHandler()
 {
-	if (!g_NativeVotes || g_RegisteredMenus)
+	if (!g_NativeVotes)
 		return;
 		
-	g_RegisteredMenus = true;
+	if (GetConVarBool(g_Cvar_NVNextLevel))
+	{
+		NativeVotes_RegisterVoteCommand("NextLevel", Menu_Nominate);
+		g_RegisteredMenusNextLevel = true;
+	}
 	
-	NativeVotes_RegisterVoteCommand("NextLevel", Menu_Nominate);
-	NativeVotes_RegisterVoteCommand("ChangeLevel", Menu_Nominate);
+	if (GetConVarBool(g_Cvar_NVChangeLevel))
+	{
+		NativeVotes_RegisterVoteCommand("ChangeLevel", Menu_Nominate);
+		g_RegisteredMenusChangeLevel = true;
+	}
 }
 
 public OnConfigsExecuted()

@@ -43,7 +43,7 @@
 
 #pragma semicolon 1
 
-#define MCE_VERSION "1.11.0 beta 1"
+#define MCE_VERSION "1.11.0 beta 2"
 
 public Plugin:myinfo =
 {
@@ -61,6 +61,9 @@ new Handle:g_Cvar_Interval = INVALID_HANDLE;
 new Handle:g_Cvar_ChangeTime = INVALID_HANDLE;
 new Handle:g_Cvar_RTVPostVoteAction = INVALID_HANDLE;
 
+new Handle:g_Cvar_NVChangeLevel = INVALID_HANDLE;
+new Handle:g_Cvar_NVRockTheVote = INVALID_HANDLE;
+
 new bool:g_CanRTV = false;		// True if RTV loaded maps and is active.
 new bool:g_RTVAllowed = false;	// True if RTV is available to players. Used to delay rtv votes.
 new g_Voters = 0;				// Total voters connected. Doesn't include fake clients.
@@ -71,7 +74,8 @@ new bool:g_Voted[MAXPLAYERS+1] = {false, ...};
 new bool:g_InChange = false;
 
 new bool:g_NativeVotes = false;
-new bool:g_RegisteredMenus = false;
+new bool:g_RegisteredMenusChangeLevel = false;
+new bool:g_RegisteredMenusRTV = false;
 
 new g_RTVTime = 0;
 #define NV "nativevotes"
@@ -82,12 +86,12 @@ public OnPluginStart()
 	LoadTranslations("rockthevote.phrases");
 	LoadTranslations("basevotes.phrases");
 	
-	g_Cvar_Needed = CreateConVar("sm_rtv_needed", "0.60", "Percentage of players needed to rockthevote (Def 60%)", 0, true, 0.05, true, 1.0);
-	g_Cvar_MinPlayers = CreateConVar("sm_rtv_minplayers", "0", "Number of players required before RTV will be enabled.", 0, true, 0.0, true, float(MAXPLAYERS));
-	g_Cvar_InitialDelay = CreateConVar("sm_rtv_initialdelay", "30.0", "Time (in seconds) before first RTV can be held", 0, true, 0.00);
-	g_Cvar_Interval = CreateConVar("sm_rtv_interval", "240.0", "Time (in seconds) after a failed RTV before another can be held", 0, true, 0.00);
-	g_Cvar_ChangeTime = CreateConVar("sm_rtv_changetime", "0", "When to change the map after a succesful RTV: 0 - Instant, 1 - RoundEnd, 2 - MapEnd", _, true, 0.0, true, 2.0);
-	g_Cvar_RTVPostVoteAction = CreateConVar("sm_rtv_postvoteaction", "0", "What to do with RTV's after a mapvote has completed. 0 - Allow, success = instant change, 1 - Deny", _, true, 0.0, true, 1.0);
+	g_Cvar_Needed = CreateConVar("rtve_needed", "0.60", "Percentage of players needed to rockthevote (Def 60%)", 0, true, 0.05, true, 1.0);
+	g_Cvar_MinPlayers = CreateConVar("rtve_minplayers", "0", "Number of players required before RTV will be enabled.", 0, true, 0.0, true, float(MAXPLAYERS));
+	g_Cvar_InitialDelay = CreateConVar("rtve_initialdelay", "30.0", "Time (in seconds) before first RTV can be held", 0, true, 0.00);
+	g_Cvar_Interval = CreateConVar("rtve_interval", "240.0", "Time (in seconds) after a failed RTV before another can be held", 0, true, 0.00);
+	g_Cvar_ChangeTime = CreateConVar("rtve_changetime", "0", "When to change the map after a succesful RTV: 0 - Instant, 1 - RoundEnd, 2 - MapEnd", _, true, 0.0, true, 2.0);
+	g_Cvar_RTVPostVoteAction = CreateConVar("rtve_postvoteaction", "0", "What to do with RTV's after a mapvote has completed. 0 - Allow, success = instant change, 1 - Deny", _, true, 0.0, true, 1.0);
 	
 	RegConsoleCmd("say", Command_Say);
 	RegConsoleCmd("say_team", Command_Say);
@@ -99,8 +103,13 @@ public OnPluginStart()
 	
 	// Rock The Vote Extended cvars
 	CreateConVar("rtve_version", MCE_VERSION, "Rock The Vote Extended Version", FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_NOTIFY|FCVAR_DONTRECORD);
+	g_Cvar_NVChangeLevel = CreateConVar("rtve_nativevotes_changelevel", "1", "TF2: Add ChangeLevel to NativeVotes 1.0 vote menu.", FCVAR_PLUGIN, true, 0.0, true, 1.0);
+	g_Cvar_NVRockTheVote = CreateConVar("rtve_nativevotes_rockthevote", "1", "TF2: Add RockTheVote to NativeVotes 1.0 vote menu.", FCVAR_PLUGIN, true, 0.0, true, 1.0);
 	
-	AutoExecConfig(true, "rtv");
+	HookConVarChange(g_Cvar_NVChangeLevel, Cvar_ChangeLevel);
+	HookConVarChange(g_Cvar_NVRockTheVote, Cvar_RockTheVote);
+	
+	AutoExecConfig(true, "rtv_extended");
 }
 
 public OnAllPluginsLoaded()
@@ -118,8 +127,15 @@ public OnPluginEnd()
 {
 	if (g_NativeVotes)
 	{
-		NativeVotes_UnregisterVoteCommand("ChangeLevel", Menu_RocktheVote);
-		NativeVotes_UnregisterVoteCommand("RockTheVote", Menu_RocktheVote);
+		if (g_RegisteredMenusChangeLevel)
+		{
+			NativeVotes_UnregisterVoteCommand("ChangeLevel", Menu_RocktheVote);
+		}
+			
+		if (g_RegisteredMenusRTV)
+		{
+			NativeVotes_UnregisterVoteCommand("RockTheVote", Menu_RocktheVote);
+		}
 	}
 }
 
@@ -137,18 +153,67 @@ public OnLibraryRemoved(const String:name[])
 	if (StrEqual(name, NV))
 	{
 		g_NativeVotes = false;
+		g_RegisteredMenusChangeLevel = false;
+		g_RegisteredMenusRTV = false;
+	}
+}
+
+public Cvar_ChangeLevel(Handle:convar, const String:oldValue[], const String:newValue[])
+{
+	if (GetConVarBool(g_Cvar_NVChangeLevel))
+	{
+		if (!g_RegisteredMenusChangeLevel)
+		{
+			NativeVotes_RegisterVoteCommand("ChangeLevel", Menu_RocktheVote);
+			g_RegisteredMenusChangeLevel = true;
+		}
+	}
+	else
+	{
+		if (g_RegisteredMenusChangeLevel)
+		{
+			NativeVotes_UnregisterVoteCommand("ChangeLevel", Menu_RocktheVote);		
+			g_RegisteredMenusChangeLevel = false;
+		}
+	}
+}
+
+public Cvar_RockTheVote(Handle:convar, const String:oldValue[], const String:newValue[])
+{
+	if (GetConVarBool(g_Cvar_NVRockTheVote))
+	{
+		if (!g_RegisteredMenusRTV)
+		{
+			NativeVotes_RegisterVoteCommand("RockTheVote", Menu_RocktheVote);
+			g_RegisteredMenusRTV = true;
+		}
+	}
+	else
+	{
+		if (g_RegisteredMenusRTV)
+		{
+			NativeVotes_UnregisterVoteCommand("RockTheVote", Menu_RocktheVote);		
+			g_RegisteredMenusRTV = false;
+		}
 	}
 }
 
 RegisterVoteHandler()
 {
-	if (!g_NativeVotes || g_RegisteredMenus)
+	if (!g_NativeVotes)
 		return;
 		
-	g_RegisteredMenus = true;
+	if (GetConVarBool(g_Cvar_NVChangeLevel) && !g_RegisteredMenusChangeLevel)
+	{
+		NativeVotes_RegisterVoteCommand("ChangeLevel", Menu_RocktheVote);
+		g_RegisteredMenusChangeLevel = true;
+	}
 	
-	NativeVotes_RegisterVoteCommand("ChangeLevel", Menu_RocktheVote);
-	NativeVotes_RegisterVoteCommand("RockTheVote", Menu_RocktheVote);
+	if (GetConVarBool(g_Cvar_NVRockTheVote) && !g_RegisteredMenusRTV)
+	{
+		NativeVotes_RegisterVoteCommand("RockTheVote", Menu_RocktheVote);
+		g_RegisteredMenusRTV = true;
+	}
 }
 
 public Action:Menu_RocktheVote(client, const String:voteCommand[], const String:voteArgument[], NativeVotesKickType:kickType, target)
