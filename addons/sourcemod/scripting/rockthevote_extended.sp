@@ -481,7 +481,7 @@ public Action:Command_ForceRTV(client, args)
 		return Plugin_Handled;
 	}
 
-	ShowActivity2(client, "[RTVE] ", "%t", "Initiated Vote Map");
+	CShowActivity2(client, "[RTVE] ", "%t", "Initiated Vote Map");
 
 	StartRTV();
 	
