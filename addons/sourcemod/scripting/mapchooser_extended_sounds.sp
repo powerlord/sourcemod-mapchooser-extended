@@ -161,7 +161,21 @@ public OnMapStart()
 public OnConfigsExecuted()
 {
 	g_DownloadAllSounds = GetConVarBool(g_Cvar_DownloadAllSounds);
+
+	SetSoundSetFromCVar();
 	
+	if (g_DownloadAllSounds)
+	{
+		BuildDownloadsTableAll();
+	}
+	else
+	{
+		BuildDownloadsTable(g_CurrentSoundSet);
+	}
+}
+
+SetSoundSetFromCVar()
+{
 	decl String:soundSet[SET_NAME_MAX_LENGTH];
 	
 	// Store which sound set is in use
@@ -173,16 +187,8 @@ public OnConfigsExecuted()
 		ResetConVar(g_Cvar_SoundSet);
 		GetConVarString(g_Cvar_SoundSet, soundSet, sizeof(soundSet));
 	}
-
+	
 	SetCurrentSoundSet(soundSet);
-	if (g_DownloadAllSounds)
-	{
-		BuildDownloadsTableAll();
-	}
-	else
-	{
-		BuildDownloadsTable(g_CurrentSoundSet);
-	}
 }
 
 public SoundSetChanged(Handle:cvar, String:oldValue[], String:newValue[])
@@ -263,6 +269,7 @@ public OnMapVoteWarningTick(time)
 public Action:Command_Reload(client, args)
 {
 	LoadSounds();
+	SetSoundSetFromCVar();
 	ReplyToCommand(client, "[MCES] Reloaded sound configuration.");
 	return Plugin_Handled;
 }
@@ -595,4 +602,6 @@ stock CloseSoundArrayHandles()
 	}
 	ClearTrie(g_SoundFiles);
 	ClearArray(g_SetNames);
+	
+	g_CurrentSoundSet = INVALID_HANDLE;
 }
