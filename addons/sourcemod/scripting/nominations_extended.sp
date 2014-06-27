@@ -41,7 +41,7 @@
 #undef REQUIRE_PLUGIN
 #include <nativevotes>
 
-#define MCE_VERSION "1.11.0 beta 2"
+#define MCE_VERSION "1.11.0 beta 3"
 
 public Plugin:myinfo =
 {
@@ -187,7 +187,7 @@ public Cvar_NextLevel(Handle:convar, const String:oldValue[], const String:newVa
 	{
 		if (!g_RegisteredMenusNextLevel)
 		{
-			NativeVotes_RegisterVoteCommand("RockTheVote", Menu_Nominate);
+			NativeVotes_RegisterVoteCommand("NextLevel", Menu_Nominate);
 			g_RegisteredMenusNextLevel = true;
 		}
 	}
@@ -195,7 +195,7 @@ public Cvar_NextLevel(Handle:convar, const String:oldValue[], const String:newVa
 	{
 		if (g_RegisteredMenusNextLevel)
 		{
-			NativeVotes_UnregisterVoteCommand("RockTheVote", Menu_Nominate);		
+			NativeVotes_UnregisterVoteCommand("NextLevel", Menu_Nominate);		
 			g_RegisteredMenusNextLevel = false;
 		}
 	}
@@ -665,7 +665,7 @@ stock bool:IsNominateAllowed(client, bool:isVoteMenu=false)
 	{
 		case CanNominate_No_VoteInProgress:
 		{
-			CReplyToCommand(client, "[ME] %t", "Nextmap Voting Started");
+			CReplyToCommand(client, "[NE] %t", "Nextmap Voting Started");
 			return false;
 		}
 		
@@ -687,7 +687,7 @@ stock bool:IsNominateAllowed(client, bool:isVoteMenu=false)
 			{
 				NativeVotes_DisplayCallVoteFail(client, NativeVotesCallFail_Generic);				
 			}
-			CReplyToCommand(client, "[ME] %t", "Max Nominations");
+			CReplyToCommand(client, "[NE] %t", "Max Nominations");
 			return false;
 		}
 	}
