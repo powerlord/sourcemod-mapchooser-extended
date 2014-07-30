@@ -262,7 +262,7 @@ public OnPluginStart()
 	g_Cvar_RandomizeNominations = CreateConVar("mce_randomizeorder", "1", "Randomize map order?", _, true, 0.0, true, 1.0);
 	g_Cvar_HideTimer = CreateConVar("mce_hidetimer", "0", "Hide the MapChooser Extended warning timer", _, true, 0.0, true, 1.0);
 	g_Cvar_NoVoteOption = CreateConVar("mce_addnovote", "1", "Add \"No Vote\" to vote menu? Doesn't apply for NativeVotes.", _, true, 0.0, true, 1.0);
-	g_Cvar_NominateAll = CreateConVar("mce_nominateall", "0", "Allow all nominations, ignoring nominations limit. Requires mce_randomizeorder 1.", _, true, 0.0, true, 1.0);
+	g_Cvar_NominateAll = CreateConVar("mce_nominateall", "0", "Allow all nominations, ignoring nominations limit. Requires mce_randomizeorder 1 and will be ignored otherwise.", _, true, 0.0, true, 1.0);
 
 	RegAdminCmd("sm_mapvote", Command_Mapvote, ADMFLAG_CHANGEMAP, "sm_mapvote - Forces MapChooser to attempt to run a map vote now.");
 	RegAdminCmd("sm_setnextmap", Command_SetNextmap, ADMFLAG_CHANGEMAP, "sm_setnextmap <map>");
