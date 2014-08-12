@@ -474,7 +474,7 @@ BuildMapMenu()
 	decl String:map[PLATFORM_MAX_PATH];
 	
 	new Handle:excludeMaps = INVALID_HANDLE;
-	decl String:currentMap[32];
+	decl String:currentMap[PLATFORM_MAX_PATH];
 	
 	if (GetConVarBool(g_Cvar_ExcludeOld))
 	{	
