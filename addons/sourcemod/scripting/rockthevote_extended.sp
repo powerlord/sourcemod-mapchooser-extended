@@ -160,6 +160,9 @@ public OnLibraryRemoved(const String:name[])
 
 public Cvar_ChangeLevel(Handle:convar, const String:oldValue[], const String:newValue[])
 {
+	if (!g_NativeVotes)
+		return;
+
 	if (GetConVarBool(g_Cvar_NVChangeLevel))
 	{
 		if (!g_RegisteredMenusChangeLevel)
@@ -180,6 +183,9 @@ public Cvar_ChangeLevel(Handle:convar, const String:oldValue[], const String:new
 
 public Cvar_RockTheVote(Handle:convar, const String:oldValue[], const String:newValue[])
 {
+	if (!g_NativeVotes)
+		return;
+	
 	if (GetConVarBool(g_Cvar_NVRockTheVote))
 	{
 		if (!g_RegisteredMenusRTV)

@@ -94,6 +94,130 @@ native bool:IsMapOfficial(const String:map[]);
  */
 native CanNominateResult:CanNominate();
 
+/**
+ * Copy a substring from source to destination
+ * 
+ * @param source		String to copy from
+ * @param start		position to start at, 0 numbered
+ * @param len			number of characters to copy
+ * @param destination	String to copy to
+ * @param maxlen		Length of destination string
+ * 
+ * @return			number of characters copied
+ */
+stock SubString(const String:source[], start, len, String:destination[], maxlen)
+{
+	if (start < 0)
+	{
+		ThrowError("start must be positive.");
+	}
+	
+	if (maxlen < 1)
+	{
+		ThrowError("Destination size must be positive: %d", maxlen);
+	}
+	
+	// maxlen - 1 to account for null terminator
+	new realLength = len < maxlen - 1 ? len : maxlen - 1;
+	
+	return strcopy(destination, realLength, source[start]);
+}
+
+/**
+ * Can't be called directly, see MapEqual and FindMapStringInMapArray below
+ * Remove the path from the map name
+ * This was added to remove workshop paths.
+ * 
+ * @param map			Map name
+ * @param destination	String to copy map name to
+ * @param maxlen		Length of destination string
+ * 
+ * @return		true if path was removed, false if map and destination are the same
+ */
+stock static bool:RemoveMapPath(const String:map[], String:destination[], maxlen)
+{
+	if (strlen(map) < 1)
+	{
+		ThrowError("Bad map name: %s", map);
+	}
+	
+	// UNIX paths
+	new pos = FindCharInString(map, '/', true);
+	if (pos == -1)
+	{
+		// Windows paths
+		pos = FindCharInString(map, '\\', true);
+		if (pos == -1)
+		{
+			destination[0] = '\0';
+			//strcopy(destination, maxlen, map);
+			return false;
+		}
+	}
+
+	// strlen is last + 1
+	new len = strlen(map) - 1 - pos;
+	
+	SubString(map, pos, len, destination, maxlen);
+	return true;
+}
+
+/**
+ * Check if two maps are the same map.
+ * Takes workshop paths into account.
+ * 
+ * @param map		First map
+ * @param map2	Second map
+ * 
+ * @return		true if they're the same map, false if not.
+ */
+stock bool:MapEqual(const String:map[], const String:map2[])
+{
+	new bPathless;
+	new bPathless2;
+	new String:pathlessMap[PLATFORM_MAX_PATH];
+	new String:pathlessMap2[PLATFORM_MAX_PATH];
+	
+	bPathless = RemoveMapPath(map, pathlessMap, sizeof(pathlessMap));
+	bPathless2 = RemoveMapPath(map2, pathlessMap2, sizeof(pathlessMap2));
+	
+	if (StrEqual(map, map2) ||
+		(bPathless && !bPathless2 && StrEqual(pathlessMap, map2)) ||
+		(!bPathless && bPathless2 && StrEqual(map, pathlessMap2)) ||
+		(bPathless && bPathless2 && StrEqual(pathlessMap, pathlessMap2)))
+	{
+		return true;
+	}
+	
+	return false;
+	
+}
+
+/**
+ * Returns the index for the first occurance of the provided map. If the map cannot be located, -1 will be returned.
+ * Takes workshop maps into account.
+ * 
+ * @param array		Array Handle.
+ * @param map			Map to search for
+ *
+ * @return 			Array index, or -1 on failure
+ */
+stock FindMapStringInMapArray(Handle:array, const String:map[])
+{
+	new arrayLen = GetArraySize(array);
+	for (new i = 0; i < arrayLen; i++)
+	{
+		new String:arrayMap[PLATFORM_MAX_PATH];
+		GetArrayString(array, i, arrayMap, sizeof(arrayMap));
+		if (MapEqual(arrayMap, map))
+		{
+			return i;
+		}
+	}
+	
+	return -1;
+}
+
 public SharedPlugin:__pl_mapchooser_extended = 
 {
 	name = "mapchooser",

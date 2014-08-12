@@ -54,7 +54,7 @@
 #undef REQUIRE_PLUGIN
 #include <nativevotes>
 
-#define MCE_VERSION "1.11.0 beta 2"
+#define MCE_VERSION "1.11.0 beta 3"
 
 enum RoundCounting
 {
@@ -1111,7 +1111,7 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 			if (randomizeList == INVALID_HANDLE)
 			{
 				AddMapItem(map);
-				RemoveStringFromArray(g_NextMapList, map);
+				RemoveMapStringFromMapArray(g_NextMapList, map);
 			}
 			
 			/* Notify Nominations that this map is now free */
@@ -1144,7 +1144,7 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 			for (new j = 0; j < GetArraySize(randomizeList); j++)
 			{
 				GetArrayString(randomizeList, j, map, sizeof(map));
-				RemoveStringFromArray(g_NextMapList, map);
+				RemoveMapStringFromMapArray(g_NextMapList, map);
 			}
 		}
 		
@@ -1745,7 +1745,19 @@ public Action:Timer_ChangeMap(Handle:hTimer, Handle:dp)
 	return Plugin_Stop;
 }
 
-bool:RemoveStringFromArray(Handle:array, String:str[])
+bool:RemoveMapStringFromMapArray(Handle:array, String:map[])
+{
+	new index = FindMapStringInMapArray(array, map);
+	if (index != -1)
+	{
+		RemoveFromArray(array, index);
+		return true;
+	}
+	
+	return false;
+}
+
+stock bool:RemoveStringFromArray(Handle:array, String:str[])
 {
 	new index = FindStringInArray(array, str);
 	if (index != -1)
@@ -1767,16 +1779,16 @@ CreateNextVote()
 	
 	if (GetConVarInt(g_Cvar_ExcludeMaps) > 0)
 	{
-		GetCurrentMap(map, PLATFORM_MAX_PATH);
-		RemoveStringFromArray(tempMaps, map);
+		GetCurrentMap(map, sizeof(map));
+		RemoveMapStringFromMapArray(tempMaps, map);
 	}
 	
 	if (GetConVarInt(g_Cvar_ExcludeMaps) && GetArraySize(tempMaps) > GetConVarInt(g_Cvar_ExcludeMaps))
 	{
 		for (new i = 0; i < GetArraySize(g_OldMapList); i++)
 		{
-			GetArrayString(g_OldMapList, i, map, PLATFORM_MAX_PATH);
-			RemoveStringFromArray(tempMaps, map);
+			GetArrayString(g_OldMapList, i, map, sizeof(map));
+			RemoveMapStringFromMapArray(tempMaps, map);
 		}	
 	}
 
@@ -1786,7 +1798,7 @@ CreateNextVote()
 	for (new i = 0; i < limit; i++)
 	{
 		new b = GetRandomInt(0, GetArraySize(tempMaps) - 1);
-		GetArrayString(tempMaps, b, map, PLATFORM_MAX_PATH);
+		GetArrayString(tempMaps, b, map, sizeof(map));
 		PushArrayString(g_NextMapList, map);
 		RemoveFromArray(tempMaps, b);
 	}

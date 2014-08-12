@@ -41,7 +41,7 @@
 #undef REQUIRE_PLUGIN
 #include <nativevotes>
 
-#define MCE_VERSION "1.11.0 beta 3"
+#define MCE_VERSION "1.11.0 beta 4"
 
 public Plugin:myinfo =
 {
@@ -487,7 +487,6 @@ BuildMapMenu()
 		GetCurrentMap(currentMap, sizeof(currentMap));
 	}
 	
-		
 	for (new i = 0; i < GetArraySize(g_MapList); i++)
 	{
 		new status = MAPSTATUS_ENABLED;
@@ -496,7 +495,7 @@ BuildMapMenu()
 		
 		if (GetConVarBool(g_Cvar_ExcludeCurrent))
 		{
-			if (StrEqual(map, currentMap))
+			if (MapEqual(map, currentMap))
 			{
 				status = MAPSTATUS_DISABLED|MAPSTATUS_EXCLUDE_CURRENT;
 			}
@@ -505,12 +504,13 @@ BuildMapMenu()
 		/* Dont bother with this check if the current map check passed */
 		if (GetConVarBool(g_Cvar_ExcludeOld) && status == MAPSTATUS_ENABLED)
 		{
-			if (FindStringInArray(excludeMaps, map) != -1)
+			if (FindMapStringInMapArray(excludeMaps, map))
 			{
 				status = MAPSTATUS_DISABLED|MAPSTATUS_EXCLUDE_PREVIOUS;
 			}
 		}
 		
+		// Don't modify how it appears in the list.
 		AddMenuItem(g_MapMenu, map, map);
 		SetTrieValue(g_mapTrie, map, status);
 	}
