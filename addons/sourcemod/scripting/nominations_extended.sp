@@ -33,6 +33,7 @@
  */
 
 #include <sourcemod>
+#include "include/map_workshop_functions.inc"
 #include <mapchooser>
 #include "include/mapchooser_extended"
 #include <colors>
