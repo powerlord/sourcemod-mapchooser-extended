@@ -47,20 +47,25 @@
  * 
  * @return			number of characters copied
  */
-static stock SubString(const String:source[], start, len, String:destination[], maxlen)
+stock SubString(const String:source[], start, len, String:destination[], maxlen)
 {
 	if (start < 0)
 	{
-		ThrowError("start must be positive.");
+		ThrowError("start must be positive, was %d", start);
+	}
+	
+	if (len < 0)
+	{
+		ThrowError("len must be positive, was %d", len);
 	}
 	
 	if (maxlen < 1)
 	{
-		ThrowError("Destination size must be positive: %d", maxlen);
+		ThrowError("Destination size must be positive, was %d", maxlen);
 	}
 	
-	// maxlen - 1 to account for null terminator
-	new realLength = len < maxlen - 1 ? len : maxlen - 1;
+	// len + 1 because second arg to strcopy counts 1 for the null terminator
+	new realLength = len + 1 < maxlen ? len + 1 : maxlen;
 	
 	return strcopy(destination, realLength, source[start]);
 }
@@ -76,7 +81,7 @@ static stock SubString(const String:source[], start, len, String:destination[], 
  * 
  * @return		true if path was removed, false if map and destination are the same
  */
-stock static bool:RemoveMapPath(const String:map[], String:destination[], maxlen)
+stock bool:RemoveMapPath(const String:map[], String:destination[], maxlen)
 {
 	if (strlen(map) < 1)
 	{
@@ -100,7 +105,7 @@ stock static bool:RemoveMapPath(const String:map[], String:destination[], maxlen
 	// strlen is last + 1
 	new len = strlen(map) - 1 - pos;
 	
-	SubString(map, pos, len, destination, maxlen);
+	SubString(map, pos + 1, len, destination, maxlen);
 	return true;
 }
 
