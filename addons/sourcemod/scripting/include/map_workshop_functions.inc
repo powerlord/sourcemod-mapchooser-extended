@@ -40,34 +40,51 @@
  * Copy a substring from source to destination
  * 
  * @param source		String to copy from
- * @param start		position to start at, 0 numbered
- * @param len			number of characters to copy
+ * @param start		position to start at, 0 numbered. Negative means to start that many characters from the end.
+ * @param len			number of characters to copy.  Negative means to not copy that many characters from the end.
  * @param destination	String to copy to
- * @param maxlen		Length of destination string
+ * @param maxlen		Length of destination string.  Must be 1 or greater.
  * 
- * @return			number of characters copied
+ * @return			True if success, false if number of characters copied would be negative.
+ * NOTE:				There is no mechanism to get the remaining characters of a string.
+ * 					Instead, use strcopy with source[start] for that.
  */
-stock SubString(const String:source[], start, len, String:destination[], maxlen)
+stock bool:SubString(const String:source[], start, len, String:destination[], maxlen)
 {
-	if (start < 0)
-	{
-		ThrowError("start must be positive, was %d", start);
-	}
-	
-	if (len < 0)
-	{
-		ThrowError("len must be positive, was %d", len);
-	}
-	
 	if (maxlen < 1)
 	{
 		ThrowError("Destination size must be positive, was %d", maxlen);
 	}
 	
+	// optimization
+	if (len == 0)
+	{
+		strcopy(destination, maxlen, "");
+		return true;
+	}
+	
+	if (start < 0)
+	{
+		// strlen doesn't count the null terminator, so don't -1 on it.
+		start = strlen(source) + start;
+		if (start < 0)
+			start = 0;
+	}
+	
+	if (len < 0)
+	{
+		len = strlen(source) + len - start;
+		// If length is still less than 0, that'd be an error.
+		if (len < 0)
+			return false;
+	}
+	
+	// Check to make sure destination is large enough to hold the len, or truncate it.
 	// len + 1 because second arg to strcopy counts 1 for the null terminator
 	new realLength = len + 1 < maxlen ? len + 1 : maxlen;
 	
-	return strcopy(destination, realLength, source[start]);
+	strcopy(destination, realLength, source[start]);
+	return true;
 }
 
 /**
