@@ -53,7 +53,7 @@ stock bool:SubString(const String:source[], start, len, String:destination[], ma
 {
 	if (maxlen < 1)
 	{
-		ThrowError("Destination size must be positive, was %d", maxlen);
+		ThrowError("Destination size must be 1 or greater, but was %d", maxlen);
 	}
 	
 	// optimization
