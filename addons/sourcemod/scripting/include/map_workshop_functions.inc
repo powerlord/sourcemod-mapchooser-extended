@@ -40,14 +40,14 @@
  * Copy a substring from source to destination
  * 
  * @param source		String to copy from
- * @param start		position to start at, 0 numbered. Negative means to start that many characters from the end.
+ * @param start			position to start at, 0 numbered. Negative means to start that many characters from the end.
  * @param len			number of characters to copy.  Negative means to not copy that many characters from the end.
  * @param destination	String to copy to
  * @param maxlen		Length of destination string.  Must be 1 or greater.
  * 
- * @return			True if success, false if number of characters copied would be negative.
+ * @return				True on success, false if number of characters copied would be negative.
  * NOTE:				There is no mechanism to get the remaining characters of a string.
- * 					Instead, use strcopy with source[start] for that.
+ * 						Instead, use strcopy with source[start] for that.
  */
 stock bool:SubString(const String:source[], start, len, String:destination[], maxlen)
 {
@@ -88,15 +88,15 @@ stock bool:SubString(const String:source[], start, len, String:destination[], ma
 }
 
 /**
- * Can't be called directly, see MapEqual and FindMapStringInMapArray below
  * Remove the path from the map name
- * This was added to remove workshop paths.
+ * This was intended to remove workshop paths.
+ * Used internally by MapEqual and FindMapStringInArray.
  * 
  * @param map			Map name
  * @param destination	String to copy map name to
  * @param maxlen		Length of destination string
  * 
- * @return		true if path was removed, false if map and destination are the same
+ * @return				True if path was removed, false if map and destination are the same
  */
 stock bool:RemoveMapPath(const String:map[], String:destination[], maxlen)
 {
@@ -131,9 +131,9 @@ stock bool:RemoveMapPath(const String:map[], String:destination[], maxlen)
  * Takes workshop paths into account.
  * 
  * @param map		First map
- * @param map2	Second map
+ * @param map2		Second map
  * 
- * @return		true if they're the same map, false if not.
+ * @return			true if they're the same map, false if not.
  */
 stock bool:MapEqual(const String:map[], const String:map2[])
 {
@@ -158,11 +158,11 @@ stock bool:MapEqual(const String:map[], const String:map2[])
 }
 
 /**
- * Returns the index for the first occurance of the provided map. If the map cannot be located, -1 will be returned.
+ * Returns the index for the first occurence of the provided map. If the map cannot be located, -1 will be returned.
  * Takes workshop maps into account.
  * 
  * @param array		Array Handle.
- * @param map			Map to search for
+ * @param map		Map to search for
  *
  * @return 			Array index, or -1 on failure
  */
