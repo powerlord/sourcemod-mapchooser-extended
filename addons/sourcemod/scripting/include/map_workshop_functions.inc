@@ -28,7 +28,7 @@
  * exceptions, found in LICENSE.txt (as of this writing, version JULY-31-2007),
  * or <http://www.sourcemod.net/license.php>.
  *
- * Version: $Id$
+ * Version: 1.1
  */
 
 #if defined _map_workshop_functions_included_
@@ -113,8 +113,8 @@ stock bool:RemoveMapPath(const String:map[], String:destination[], maxlen)
 		pos = FindCharInString(map, '\\', true);
 		if (pos == -1)
 		{
-			destination[0] = '\0';
-			//strcopy(destination, maxlen, map);
+			//destination[0] = '\0';
+			strcopy(destination, maxlen, map);
 			return false;
 		}
 	}
