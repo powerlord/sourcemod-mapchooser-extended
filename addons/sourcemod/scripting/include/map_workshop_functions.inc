@@ -59,7 +59,7 @@ stock bool:SubString(const String:source[], start, len, String:destination[], ma
 	// optimization
 	if (len == 0)
 	{
-		strcopy(destination, maxlen, "");
+		destination[0] = '\0';
 		return true;
 	}
 	
