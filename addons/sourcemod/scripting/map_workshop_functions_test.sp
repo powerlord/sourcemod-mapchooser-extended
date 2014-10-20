@@ -51,6 +51,7 @@ public OnPluginStart()
 	RegConsoleCmd("substring", Cmd_Substring, "Test SubString command");
 	RegConsoleCmd("removemappath", Cmd_RemoveMapPath, "Test RemoveMapPath command");
 	RegConsoleCmd("mapequal", Cmd_MapEqual, "Test MapEqual command");
+	RegConsoleCmd("strlen", Cmd_StrLen, "Test strlen results");
 }
 
 public Action:Cmd_Substring(client, args)
@@ -123,5 +124,21 @@ public Action:Cmd_RemoveMapPath(client, args)
 		ReplyToCommand(client, "RemoveMapPath failed");
 	}
 	
+	return Plugin_Handled;
+}
+
+public Action:Cmd_StrLen(client, args)
+{
+	if (args < 1)
+	{
+		ReplyToCommand(client, "Usage: strlen \"string\"");
+		return Plugin_Handled;
+	}
+	
+	new String:inString[64];
+	
+	GetCmdArg(1, inString, sizeof(inString));
+	
+	ReplyToCommand(client, "Length of \"%s\" is %d", inString, strlen(inString));
 	return Plugin_Handled;
 }

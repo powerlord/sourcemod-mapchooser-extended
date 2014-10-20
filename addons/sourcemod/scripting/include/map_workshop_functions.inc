@@ -122,6 +122,7 @@ stock bool:RemoveMapPath(const String:map[], String:destination[], maxlen)
 	// strlen is last + 1
 	new len = strlen(map) - 1 - pos;
 	
+	// pos + 1 is because pos is the last / or \ location and we want to start one char further
 	SubString(map, pos + 1, len, destination, maxlen);
 	return true;
 }
