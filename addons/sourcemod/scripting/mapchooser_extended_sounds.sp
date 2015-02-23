@@ -40,7 +40,7 @@
 #include <sdktools>
 #include <emitsoundany>
 
-#define VERSION "1.10.2"
+#define VERSION "1.10.3"
 
 #define CONFIG_FILE "configs/mapchooser_extended/sounds.cfg"
 #define CONFIG_DIRECTORY "configs/mapchooser_extended/sounds"
