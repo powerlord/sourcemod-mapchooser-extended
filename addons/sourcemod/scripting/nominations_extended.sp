@@ -133,12 +133,12 @@ public OnPluginEnd()
 	{
 		if (g_RegisteredMenusNextLevel)
 		{
-			NativeVotes_UnregisterVoteCommand("NextLevel", Menu_Nominate);
+			NativeVotes_UnregisterVoteCommand(NativeVotesOverride_NextLevel, Menu_Nominate);
 		}
 		
 		if (g_RegisteredMenusChangeLevel)
 		{
-			NativeVotes_UnregisterVoteCommand("ChangeLevel", Menu_Nominate);
+			NativeVotes_UnregisterVoteCommand(NativeVotesOverride_ChgLevel, Menu_Nominate);
 		}
 	}
 }
@@ -168,7 +168,7 @@ public Cvar_ChangeLevel(Handle:convar, const String:oldValue[], const String:new
 	{
 		if (!g_RegisteredMenusChangeLevel)
 		{
-			NativeVotes_RegisterVoteCommand("ChangeLevel", Menu_Nominate);
+			NativeVotes_RegisterVoteCommand(NativeVotesOverride_ChgLevel, Menu_Nominate);
 			g_RegisteredMenusChangeLevel = true;
 		}
 	}
@@ -176,7 +176,7 @@ public Cvar_ChangeLevel(Handle:convar, const String:oldValue[], const String:new
 	{
 		if (g_RegisteredMenusChangeLevel)
 		{
-			NativeVotes_UnregisterVoteCommand("ChangeLevel", Menu_Nominate);		
+			NativeVotes_UnregisterVoteCommand(NativeVotesOverride_ChgLevel, Menu_Nominate);		
 			g_RegisteredMenusChangeLevel = false;
 		}
 	}
@@ -188,7 +188,7 @@ public Cvar_NextLevel(Handle:convar, const String:oldValue[], const String:newVa
 	{
 		if (!g_RegisteredMenusNextLevel)
 		{
-			NativeVotes_RegisterVoteCommand("NextLevel", Menu_Nominate);
+			NativeVotes_RegisterVoteCommand(NativeVotesOverride_NextLevel, Menu_Nominate);
 			g_RegisteredMenusNextLevel = true;
 		}
 	}
@@ -196,7 +196,7 @@ public Cvar_NextLevel(Handle:convar, const String:oldValue[], const String:newVa
 	{
 		if (g_RegisteredMenusNextLevel)
 		{
-			NativeVotes_UnregisterVoteCommand("NextLevel", Menu_Nominate);		
+			NativeVotes_UnregisterVoteCommand(NativeVotesOverride_NextLevel, Menu_Nominate);		
 			g_RegisteredMenusNextLevel = false;
 		}
 	}
@@ -209,13 +209,13 @@ RegisterVoteHandler()
 		
 	if (GetConVarBool(g_Cvar_NVNextLevel))
 	{
-		NativeVotes_RegisterVoteCommand("NextLevel", Menu_Nominate);
+		NativeVotes_RegisterVoteCommand(NativeVotesOverride_NextLevel, Menu_Nominate);
 		g_RegisteredMenusNextLevel = true;
 	}
 	
 	if (GetConVarBool(g_Cvar_NVChangeLevel))
 	{
-		NativeVotes_RegisterVoteCommand("ChangeLevel", Menu_Nominate);
+		NativeVotes_RegisterVoteCommand(NativeVotesOverride_ChgLevel, Menu_Nominate);
 		g_RegisteredMenusChangeLevel = true;
 	}
 }
@@ -330,7 +330,7 @@ public Action:Command_Say(client, args)
 	return Plugin_Continue;	
 }
 
-public Action:Menu_Nominate(client, const String:voteCommand[], const String:voteArgument[], NativeVotesKickType:kickType, target)
+public Action:Menu_Nominate(client, NativeVotesOverride:overrideType, const String:voteArgument[])
 {
 	if (!client || NativeVotes_IsVoteInProgress() || !IsNominateAllowed(client, true))
 	{

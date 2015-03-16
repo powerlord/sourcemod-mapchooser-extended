@@ -62,7 +62,6 @@ new Handle:g_Cvar_ChangeTime = INVALID_HANDLE;
 new Handle:g_Cvar_RTVPostVoteAction = INVALID_HANDLE;
 
 new Handle:g_Cvar_NVChangeLevel = INVALID_HANDLE;
-new Handle:g_Cvar_NVRockTheVote = INVALID_HANDLE;
 
 new bool:g_CanRTV = false;		// True if RTV loaded maps and is active.
 new bool:g_RTVAllowed = false;	// True if RTV is available to players. Used to delay rtv votes.
@@ -75,7 +74,6 @@ new bool:g_InChange = false;
 
 new bool:g_NativeVotes = false;
 new bool:g_RegisteredMenusChangeLevel = false;
-new bool:g_RegisteredMenusRTV = false;
 
 new g_RTVTime = 0;
 #define NV "nativevotes"
@@ -104,10 +102,8 @@ public OnPluginStart()
 	// Rock The Vote Extended cvars
 	CreateConVar("rtve_version", MCE_VERSION, "Rock The Vote Extended Version", FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_NOTIFY|FCVAR_DONTRECORD);
 	g_Cvar_NVChangeLevel = CreateConVar("rtve_nativevotes_changelevel", "1", "TF2: Add ChangeLevel to NativeVotes 1.0 vote menu.", FCVAR_PLUGIN, true, 0.0, true, 1.0);
-	g_Cvar_NVRockTheVote = CreateConVar("rtve_nativevotes_rockthevote", "1", "TF2: Add RockTheVote to NativeVotes 1.0 vote menu.", FCVAR_PLUGIN, true, 0.0, true, 1.0);
 	
 	HookConVarChange(g_Cvar_NVChangeLevel, Cvar_ChangeLevel);
-	HookConVarChange(g_Cvar_NVRockTheVote, Cvar_RockTheVote);
 	
 	AutoExecConfig(true, "rtv_extended");
 }
@@ -129,12 +125,7 @@ public OnPluginEnd()
 	{
 		if (g_RegisteredMenusChangeLevel)
 		{
-			NativeVotes_UnregisterVoteCommand("ChangeLevel", Menu_RocktheVote);
-		}
-			
-		if (g_RegisteredMenusRTV)
-		{
-			NativeVotes_UnregisterVoteCommand("RockTheVote", Menu_RocktheVote);
+			NativeVotes_UnregisterVoteCommand(NativeVotesOverride_ChgLevel, Menu_RocktheVote);
 		}
 	}
 }
@@ -154,7 +145,6 @@ public OnLibraryRemoved(const String:name[])
 	{
 		g_NativeVotes = false;
 		g_RegisteredMenusChangeLevel = false;
-		g_RegisteredMenusRTV = false;
 	}
 }
 
@@ -167,7 +157,7 @@ public Cvar_ChangeLevel(Handle:convar, const String:oldValue[], const String:new
 	{
 		if (!g_RegisteredMenusChangeLevel)
 		{
-			NativeVotes_RegisterVoteCommand("ChangeLevel", Menu_RocktheVote);
+			NativeVotes_RegisterVoteCommand(NativeVotesOverride_ChgLevel, Menu_RocktheVote);
 			g_RegisteredMenusChangeLevel = true;
 		}
 	}
@@ -175,31 +165,8 @@ public Cvar_ChangeLevel(Handle:convar, const String:oldValue[], const String:new
 	{
 		if (g_RegisteredMenusChangeLevel)
 		{
-			NativeVotes_UnregisterVoteCommand("ChangeLevel", Menu_RocktheVote);		
+			NativeVotes_UnregisterVoteCommand(NativeVotesOverride_ChgLevel, Menu_RocktheVote);		
 			g_RegisteredMenusChangeLevel = false;
-		}
-	}
-}
-
-public Cvar_RockTheVote(Handle:convar, const String:oldValue[], const String:newValue[])
-{
-	if (!g_NativeVotes)
-		return;
-	
-	if (GetConVarBool(g_Cvar_NVRockTheVote))
-	{
-		if (!g_RegisteredMenusRTV)
-		{
-			NativeVotes_RegisterVoteCommand("RockTheVote", Menu_RocktheVote);
-			g_RegisteredMenusRTV = true;
-		}
-	}
-	else
-	{
-		if (g_RegisteredMenusRTV)
-		{
-			NativeVotes_UnregisterVoteCommand("RockTheVote", Menu_RocktheVote);		
-			g_RegisteredMenusRTV = false;
 		}
 	}
 }
@@ -211,18 +178,12 @@ RegisterVoteHandler()
 		
 	if (GetConVarBool(g_Cvar_NVChangeLevel) && !g_RegisteredMenusChangeLevel)
 	{
-		NativeVotes_RegisterVoteCommand("ChangeLevel", Menu_RocktheVote);
+		NativeVotes_RegisterVoteCommand(NativeVotesOverride_ChgLevel, Menu_RocktheVote);
 		g_RegisteredMenusChangeLevel = true;
-	}
-	
-	if (GetConVarBool(g_Cvar_NVRockTheVote) && !g_RegisteredMenusRTV)
-	{
-		NativeVotes_RegisterVoteCommand("RockTheVote", Menu_RocktheVote);
-		g_RegisteredMenusRTV = true;
 	}
 }
 
-public Action:Menu_RocktheVote(client, const String:voteCommand[], const String:voteArgument[], NativeVotesKickType:kickType, target)
+public Action:Menu_RocktheVote(client, NativeVotesOverride:overrideType, const String:voteArgument[], NativeVotesKickType:kickType, target)
 {
 	if (!g_CanRTV || !client || NativeVotes_IsVoteInProgress())
 	{
