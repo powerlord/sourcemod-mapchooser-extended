@@ -63,3 +63,9 @@ plr_hightower_event
 cp_snakewater_final1
 mvm_mannhattan
 mvm_rottenburg
+pl_cactuscanyon
+rd_asteroid
+sd_doomsday_event
+ctf_foundry
+ctf_gorge
+ctf_thundermountain

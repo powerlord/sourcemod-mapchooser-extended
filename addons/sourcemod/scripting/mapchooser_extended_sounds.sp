@@ -40,7 +40,7 @@
 #include <sdktools>
 #include <emitsoundany>
 
-#define VERSION "1.10.2"
+#define VERSION "1.10.3"
 
 #define CONFIG_FILE "configs/mapchooser_extended/sounds.cfg"
 #define CONFIG_DIRECTORY "configs/mapchooser_extended/sounds"
@@ -469,9 +469,9 @@ LoadSounds()
 }
 
 // Internal LoadSounds function to get sound and type 
-SoundType:RetrieveSound(Handle:soundsKV, bool:builtin, String:soundFile[], soundFileSize)
+SoundType:RetrieveSound(Handle:soundsKV, bool:isBuiltin, String:soundFile[], soundFileSize)
 {
-	if (builtin)
+	if (isBuiltin)
 	{
 		// event is considered before builtin, as it has related game data and should always be used in preference to builtin
 		KvGetString(soundsKV, "event", soundFile,soundFileSize);
