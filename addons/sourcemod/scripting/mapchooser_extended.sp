@@ -33,19 +33,8 @@
  * Version: $Id$
  */
 
-//#define DEBUG
-
-#if defined DEBUG
-	#define assert(%1) if (!(%1)) ThrowError("Debug Assertion Failed");
-	#define assert_msg(%1,%2) if (!(%1)) ThrowError(%2);
-#else
-	#define assert(%1)
-	#define assert_msg(%1,%2)
-#endif
-
 #pragma semicolon 1
 #include <sourcemod>
-#include "include/map_workshop_functions.inc"
 #include <mapchooser>
 #include "include/mapchooser_extended"
 #include <nextmap>
@@ -243,12 +232,11 @@ public OnPluginStart()
 	g_Cvar_Extend = CreateConVar("mce_extend", "0", "Number of extensions allowed each map.", _, true, 0.0);
 	g_Cvar_DontChange = CreateConVar("mce_dontchange", "1", "Specifies if a 'Don't Change' option should be added to early votes", _, true, 0.0);
 	g_Cvar_VoteDuration = CreateConVar("mce_voteduration", "20", "Specifies how long the mapvote should be available for.", _, true, 5.0);
-
-	// MapChooser Extended cvars
-	CreateConVar("mce_version", MCE_VERSION, "MapChooser Extended Version", FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_NOTIFY|FCVAR_DONTRECORD);
-
 	g_Cvar_RunOff = CreateConVar("mce_runoff", "1", "Hold run off votes if winning choice has less than a certain percentage of votes", _, true, 0.0, true, 1.0);
 	g_Cvar_RunOffPercent = CreateConVar("mce_runoffpercent", "50", "If winning choice has less than this percent of votes, hold a runoff", _, true, 0.0, true, 100.0);
+	
+	// MapChooser Extended cvars
+	CreateConVar("mce_version", MCE_VERSION, "MapChooser Extended Version", FCVAR_SPONLY|FCVAR_NOTIFY|FCVAR_DONTRECORD);
 	g_Cvar_BlockSlots = CreateConVar("mce_blockslots", "1", "Block slots to prevent accidental votes.  Only applies when Voice Command style menus are in use.", _, true, 0.0, true, 1.0);
 	//g_Cvar_BlockSlotsCount = CreateConVar("mce_blockslots_count", "2", "Number of slots to block.", _, true, 1.0, true, 3.0);
 	g_Cvar_MaxRunOffs = CreateConVar("mce_maxrunoffs", "1", "Number of run off votes allowed each map.", _, true, 0.0);
@@ -426,9 +414,6 @@ public OnLibraryRemoved(const String:name[])
 
 public OnMapStart()
 {
-	decl String:folder[64];
-	GetGameFolderName(folder, sizeof(folder));
-	
 	g_RoundCounting = RoundCounting_Standard;
 	g_ObjectiveEnt = -1;
 	
@@ -548,14 +533,17 @@ public Action:Command_SetNextmap(client, args)
 	}
 
 	decl String:map[PLATFORM_MAX_PATH];
+	decl String:displayName[PLATFORM_MAX_PATH];
 	GetCmdArg(1, map, PLATFORM_MAX_PATH);
 
-	if (!IsMapValid(map))
+	if (FindMap(map, displayName, sizeof(displayName)) == FindMap_NotFound)
 	{
 		CReplyToCommand(client, "[MCE] %t", "Map was not found", map);
 		return Plugin_Handled;
 	}
 
+	GetMapDisplayName(displayName, displayName, sizeof(displayName));
+	
 	ShowActivity(client, "%t", "Changed Next Map", map);
 	LogAction(client, -1, "\"%L\" changed nextmap to \"%s\"", client, map);
 
@@ -1112,7 +1100,7 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 			if (randomizeList == INVALID_HANDLE)
 			{
 				AddMapItem(map);
-				RemoveMapStringFromMapArray(g_NextMapList, map);
+				RemoveStringFromArray(g_NextMapList, map);
 			}
 			
 			/* Notify Nominations that this map is now free */
@@ -1145,7 +1133,7 @@ InitiateVote(MapChange:when, Handle:inputlist=INVALID_HANDLE)
 			for (new j = 0; j < GetArraySize(randomizeList); j++)
 			{
 				GetArrayString(randomizeList, j, map, sizeof(map));
-				RemoveMapStringFromMapArray(g_NextMapList, map);
+				RemoveStringFromArray(g_NextMapList, map);
 			}
 		}
 		
@@ -1746,18 +1734,6 @@ public Action:Timer_ChangeMap(Handle:hTimer, Handle:dp)
 	return Plugin_Stop;
 }
 
-bool:RemoveMapStringFromMapArray(Handle:array, String:map[])
-{
-	new index = FindMapStringInMapArray(array, map);
-	if (index != -1)
-	{
-		RemoveFromArray(array, index);
-		return true;
-	}
-	
-	return false;
-}
-
 stock bool:RemoveStringFromArray(Handle:array, String:str[])
 {
 	new index = FindStringInArray(array, str);
@@ -1772,16 +1748,26 @@ stock bool:RemoveStringFromArray(Handle:array, String:str[])
 
 CreateNextVote()
 {
-	assert(g_NextMapList)
 	ClearArray(g_NextMapList);
 	
 	decl String:map[PLATFORM_MAX_PATH];
-	new Handle:tempMaps  = CloneArray(g_MapList);
+	// tempMaps is a resolved map list
+	new Handle:tempMaps  = CreateArray(ByteCountToCells(PLATFORM_MAX_PATH));
+	
+	for (int i = 0; i < GetArraySize(g_MapList); i++)
+	{
+		GetArrayString(g_MapList, i, map, sizeof(map));
+		if (FindMap(map, map, sizeof(map)) != FindMap_NotFound)
+		{
+			PushArrayString(tempMaps, map);
+		}
+	}
 	
 	if (GetConVarInt(g_Cvar_ExcludeMaps) > 0)
 	{
+		//GetCurrentMap always returns a resolved map
 		GetCurrentMap(map, sizeof(map));
-		RemoveMapStringFromMapArray(tempMaps, map);
+		RemoveStringFromArray(tempMaps, map);
 	}
 	
 	if (GetConVarInt(g_Cvar_ExcludeMaps) && GetArraySize(tempMaps) > GetConVarInt(g_Cvar_ExcludeMaps))
@@ -1789,13 +1775,12 @@ CreateNextVote()
 		for (new i = 0; i < GetArraySize(g_OldMapList); i++)
 		{
 			GetArrayString(g_OldMapList, i, map, sizeof(map));
-			RemoveMapStringFromMapArray(tempMaps, map);
+			RemoveStringFromArray(tempMaps, map);
 		}	
 	}
 
 	new voteSize = GetVoteSize();
 	new limit = (voteSize < GetArraySize(tempMaps) ? voteSize : GetArraySize(tempMaps));
-	
 	for (new i = 0; i < limit; i++)
 	{
 		new b = GetRandomInt(0, GetArraySize(tempMaps) - 1);
@@ -2212,13 +2197,16 @@ public Native_CanNominate(Handle:plugin, numParams)
 
 stock AddMapItem(const String:map[])
 {
+	new String:displayName[PLATFORM_MAX_PATH];
+	GetMapDisplayName(map, displayName, sizeof(displayName));
+	
 	if (g_NativeVotes)
 	{
-		NativeVotes_AddItem(g_VoteMenu, map, map);
+		NativeVotes_AddItem(g_VoteMenu, map, displayName);
 	}
 	else
 	{
-		AddMenuItem(g_VoteMenu, map, map);
+		AddMenuItem(g_VoteMenu, map, displayName);
 	}
 }
 

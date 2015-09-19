@@ -33,7 +33,6 @@
  */
 
 #include <sourcemod>
-#include "include/map_workshop_functions.inc"
 #include <mapchooser>
 #include "include/mapchooser_extended"
 #include <colors>
@@ -93,17 +92,14 @@ public OnPluginStart()
 	g_Cvar_ExcludeOld = CreateConVar("ne_excludeold", "1", "Specifies if the current map should be excluded from the Nominations list", 0, true, 0.00, true, 1.0);
 	g_Cvar_ExcludeCurrent = CreateConVar("ne_excludecurrent", "1", "Specifies if the MapChooser excluded maps should also be excluded from Nominations", 0, true, 0.00, true, 1.0);
 	
-	RegConsoleCmd("say", Command_Say);
-	RegConsoleCmd("say_team", Command_Say);
-	
 	RegConsoleCmd("sm_nominate", Command_Nominate);
 	
 	RegAdminCmd("sm_nominate_addmap", Command_Addmap, ADMFLAG_CHANGEMAP, "sm_nominate_addmap <mapname> - Forces a map to be on the next mapvote.");
 	
 	// Nominations Extended cvars
-	CreateConVar("ne_version", MCE_VERSION, "Nominations Extended Version", FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_NOTIFY|FCVAR_DONTRECORD);
-	g_Cvar_NVChangeLevel = CreateConVar("ne_nativevotes_changelevel", "1", "TF2: Add ChangeLevel to NativeVotes 1.0 vote menu.", FCVAR_PLUGIN, true, 0.0, true, 1.0);
-	g_Cvar_NVNextLevel = CreateConVar("ne_nativevotes_nextlevel", "1", "TF2: Add NextLevel to NativeVotes 1.0 vote menu.", FCVAR_PLUGIN, true, 0.0, true, 1.0);
+	CreateConVar("ne_version", MCE_VERSION, "Nominations Extended Version", FCVAR_SPONLY|FCVAR_NOTIFY|FCVAR_DONTRECORD);
+	g_Cvar_NVChangeLevel = CreateConVar("ne_nativevotes_changelevel", "1", "TF2: Add ChangeLevel to NativeVotes 1.0 vote menu.", _, true, 0.0, true, 1.0);
+	g_Cvar_NVNextLevel = CreateConVar("ne_nativevotes_nextlevel", "1", "TF2: Add NextLevel to NativeVotes 1.0 vote menu.", _, true, 0.0, true, 1.0);
 	
 	HookConVarChange(g_Cvar_NVChangeLevel, Cvar_ChangeLevel);
 	HookConVarChange(g_Cvar_NVNextLevel, Cvar_NextLevel);
@@ -241,10 +237,13 @@ public OnNominationRemoved(const String:map[], owner)
 {
 	new status;
 	
+	new String:resolvedMap[PLATFORM_MAX_PATH];
+	FindMap(map, resolvedMap, sizeof(resolvedMap));
+	
 	/* Is the map in our list? */
-	if (!GetTrieValue(g_mapTrie, map, status))
+	if (!GetTrieValue(g_mapTrie, resolvedMap, status))
 	{
-		return;	
+		return;
 	}
 	
 	/* Was the map disabled due to being nominated */
@@ -253,7 +252,7 @@ public OnNominationRemoved(const String:map[], owner)
 		return;
 	}
 	
-	SetTrieValue(g_mapTrie, map, MAPSTATUS_ENABLED);	
+	SetTrieValue(g_mapTrie, resolvedMap, MAPSTATUS_ENABLED);
 }
 
 public Action:Command_Addmap(client, args)
@@ -265,69 +264,59 @@ public Action:Command_Addmap(client, args)
 	}
 	
 	decl String:mapname[PLATFORM_MAX_PATH];
+	decl String:resolvedMap[PLATFORM_MAX_PATH];
 	GetCmdArg(1, mapname, sizeof(mapname));
 
-	
-	new status;
-	if (!GetTrieValue(g_mapTrie, mapname, status))
+	if (FindMap(mapname, resolvedMap, sizeof(resolvedMap)) == FindMap_NotFound)
 	{
+		// We couldn't resolve the map entry to a filename, so...
 		CReplyToCommand(client, "%t", "Map was not found", mapname);
-		return Plugin_Handled;		
+		return Plugin_Handled;
 	}
 	
-	new NominateResult:result = NominateMap(mapname, true, 0);
+	new String:displayName[PLATFORM_MAX_PATH];
+	GetMapDisplayName(resolvedMap, displayName, sizeof(displayName));
+	
+	new status;
+	if (!GetTrieValue(g_mapTrie, resolvedMap, status))
+	{
+		CReplyToCommand(client, "%t", "Map was not found", displayName);
+		return Plugin_Handled;
+	}
+	
+	new NominateResult:result = NominateMap(resolvedMap, true, 0);
 	
 	if (result > Nominate_Replaced)
 	{
 		/* We assume already in vote is the casue because the maplist does a Map Validity check and we forced, so it can't be full */
-		CReplyToCommand(client, "%t", "Map Already In Vote", mapname);
+		CReplyToCommand(client, "%t", "Map Already In Vote", displayName);
 		
-		return Plugin_Handled;	
+		return Plugin_Handled;
 	}
 	
+	SetTrieValue(g_mapTrie, resolvedMap, MAPSTATUS_DISABLED|MAPSTATUS_EXCLUDE_NOMINATED);
 	
-	SetTrieValue(g_mapTrie, mapname, MAPSTATUS_DISABLED|MAPSTATUS_EXCLUDE_NOMINATED);
-
-	
-	CReplyToCommand(client, "%t", "Map Inserted", mapname);
+	CReplyToCommand(client, "%t", "Map Inserted", displayName);
 	LogAction(client, -1, "\"%L\" inserted map \"%s\".", client, mapname);
 
 	return Plugin_Handled;		
 }
 
-public Action:Command_Say(client, args)
+public OnClientSayCommand_Post(client, const String:command[], const String:sArgs[])
 {
 	if (!client)
 	{
-		return Plugin_Continue;
+		return;
 	}
-
-	decl String:text[192];
-	if (!GetCmdArgString(text, sizeof(text)))
+	
+	if (strcmp(sArgs, "nominate", false) == 0)
 	{
-		return Plugin_Continue;
+		ReplySource old = SetCmdReplySource(SM_REPLY_TO_CHAT);
+		
+		AttemptNominate(client);
+		
+		SetCmdReplySource(old);
 	}
-	
-	new startidx = 0;
-	if(text[strlen(text)-1] == '"')
-	{
-		text[strlen(text)-1] = '\0';
-		startidx = 1;
-	}
-	
-	new ReplySource:old = SetCmdReplySource(SM_REPLY_TO_CHAT);
-	
-	if (strcmp(text[startidx], "nominate", false) == 0)
-	{
-		if (IsNominateAllowed(client))
-		{
-			AttemptNominate(client);
-		}
-	}
-	
-	SetCmdReplySource(old);
-	
-	return Plugin_Continue;	
 }
 
 public Action:Menu_Nominate(client, NativeVotesOverride:overrideType, const String:voteArgument[])
@@ -373,14 +362,25 @@ public Action:Command_Nominate(client, args)
 
 Action:Internal_NominateCommand(client, const String:mapname[], bool:isVoteMenu)
 {
+	new String:resolvedMap[PLATFORM_MAX_PATH];
+	if (FindMap(mapname, resolvedMap, sizeof(resolvedMap)) == FindMap_NotFound)
+	{
+		// We couldn't resolve the map entry to a filename, so...
+		CReplyToCommand(client, "%t", "Map was not found", mapname);
+		return Plugin_Handled;		
+	}
+	
+	new String:displayName[PLATFORM_MAX_PATH];
+	GetMapDisplayName(resolvedMap, displayName, sizeof(displayName));
+	
 	new status;
-	if (!GetTrieValue(g_mapTrie, mapname, status))
+	if (!GetTrieValue(g_mapTrie, resolvedMap, status))
 	{
 		if (isVoteMenu && g_NativeVotes)
 		{
 			NativeVotes_DisplayCallVoteFail(client, NativeVotesCallFail_MapNotValid);
 		}
-		CReplyToCommand(client, "[NE] %t", "Map was not found", mapname);
+		CReplyToCommand(client, "[NE] %t", "Map was not found", displayName);
 		return Plugin_Handled;		
 	}
 	
@@ -416,7 +416,7 @@ Action:Internal_NominateCommand(client, const String:mapname[], bool:isVoteMenu)
 		return Plugin_Handled;
 	}
 	
-	new NominateResult:result = NominateMap(mapname, false, client);
+	new NominateResult:result = NominateMap(resolvedMap, false, client);
 	
 	if (result > Nominate_Replaced)
 	{
@@ -426,7 +426,7 @@ Action:Internal_NominateCommand(client, const String:mapname[], bool:isVoteMenu)
 			{
 				NativeVotes_DisplayCallVoteFail(client, NativeVotesCallFail_MapNotValid);
 			}
-			CReplyToCommand(client, "[NE] %t", "Map Already In Vote", mapname);
+			CReplyToCommand(client, "[NE] %t", "Map Already In Vote", displayName);
 		}
 		else
 		{
@@ -442,12 +442,11 @@ Action:Internal_NominateCommand(client, const String:mapname[], bool:isVoteMenu)
 	
 	/* Map was nominated! - Disable the menu item and update the trie */
 	
-	SetTrieValue(g_mapTrie, mapname, MAPSTATUS_DISABLED|MAPSTATUS_EXCLUDE_NOMINATED);
+	SetTrieValue(g_mapTrie, resolvedMap, MAPSTATUS_DISABLED|MAPSTATUS_EXCLUDE_NOMINATED);
 	
 	decl String:name[MAX_NAME_LENGTH];
 	GetClientName(client, name, sizeof(name));
-	PrintToChatAll("[NE] %t", "Map Nominated", name, mapname);
-	LogMessage("%s nominated %s", name, mapname);
+	PrintToChatAll("[NE] %t", "Map Nominated", name, displayName);
 	
 	return Plugin_Handled;
 }
@@ -494,9 +493,14 @@ BuildMapMenu()
 		
 		GetArrayString(g_MapList, i, map, sizeof(map));
 		
+		FindMap(map, map, sizeof(map));
+		
+		new String:displayName[PLATFORM_MAX_PATH];
+		GetMapDisplayName(map, displayName, sizeof(displayName));
+		
 		if (GetConVarBool(g_Cvar_ExcludeCurrent))
 		{
-			if (MapEqual(map, currentMap))
+			if (StrEqual(map, currentMap))
 			{
 				status = MAPSTATUS_DISABLED|MAPSTATUS_EXCLUDE_CURRENT;
 			}
@@ -505,14 +509,14 @@ BuildMapMenu()
 		/* Dont bother with this check if the current map check passed */
 		if (GetConVarBool(g_Cvar_ExcludeOld) && status == MAPSTATUS_ENABLED)
 		{
-			if (FindMapStringInMapArray(excludeMaps, map))
+			if (FindStringInArray(excludeMaps, map))
 			{
 				status = MAPSTATUS_DISABLED|MAPSTATUS_EXCLUDE_PREVIOUS;
 			}
 		}
 		
 		// Don't modify how it appears in the list.
-		AddMenuItem(g_MapMenu, map, map);
+		AddMenuItem(g_MapMenu, map, displayName);
 		SetTrieValue(g_mapTrie, map, status);
 	}
 	

@@ -43,7 +43,7 @@
 
 #pragma semicolon 1
 
-#define MCE_VERSION "1.11.0 beta 2"
+#define MCE_VERSION "1.11.0 beta 3"
 
 public Plugin:myinfo =
 {
@@ -91,17 +91,14 @@ public OnPluginStart()
 	g_Cvar_ChangeTime = CreateConVar("rtve_changetime", "0", "When to change the map after a succesful RTV: 0 - Instant, 1 - RoundEnd, 2 - MapEnd", _, true, 0.0, true, 2.0);
 	g_Cvar_RTVPostVoteAction = CreateConVar("rtve_postvoteaction", "0", "What to do with RTV's after a mapvote has completed. 0 - Allow, success = instant change, 1 - Deny", _, true, 0.0, true, 1.0);
 	
-	RegConsoleCmd("say", Command_Say);
-	RegConsoleCmd("say_team", Command_Say);
-	
 	RegConsoleCmd("sm_rtv", Command_RTV);
 	
 	RegAdminCmd("sm_forcertv", Command_ForceRTV, ADMFLAG_CHANGEMAP, "Force an RTV vote");
 	RegAdminCmd("mce_forcertv", Command_ForceRTV, ADMFLAG_CHANGEMAP, "Force an RTV vote");
 	
 	// Rock The Vote Extended cvars
-	CreateConVar("rtve_version", MCE_VERSION, "Rock The Vote Extended Version", FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_NOTIFY|FCVAR_DONTRECORD);
-	g_Cvar_NVChangeLevel = CreateConVar("rtve_nativevotes_changelevel", "1", "TF2: Add ChangeLevel to NativeVotes 1.0 vote menu.", FCVAR_PLUGIN, true, 0.0, true, 1.0);
+	CreateConVar("rtve_version", MCE_VERSION, "Rock The Vote Extended Version", FCVAR_SPONLY|FCVAR_NOTIFY|FCVAR_DONTRECORD);
+	g_Cvar_NVChangeLevel = CreateConVar("rtve_nativevotes_changelevel", "1", "TF2: Add ChangeLevel to NativeVotes 1.0 vote menu.", _, true, 0.0, true, 1.0);
 	
 	HookConVarChange(g_Cvar_NVChangeLevel, Cvar_ChangeLevel);
 	
@@ -276,6 +273,23 @@ public OnClientDisconnect(client)
 	}	
 }
 
+public OnClientSayCommand_Post(client, const String:command[], const String:sArgs[])
+{
+	if (!g_CanRTV || !client)
+	{
+		return;
+	}
+	
+	if (strcmp(sArgs, "rtv", false) == 0 || strcmp(sArgs, "rockthevote", false) == 0)
+	{
+		ReplySource old = SetCmdReplySource(SM_REPLY_TO_CHAT);
+		
+		AttemptRTV(client);
+		
+		SetCmdReplySource(old);
+	}
+}
+
 public Action:Command_RTV(client, args)
 {
 	if (!g_CanRTV || !client)
@@ -286,38 +300,6 @@ public Action:Command_RTV(client, args)
 	AttemptRTV(client);
 	
 	return Plugin_Handled;
-}
-
-public Action:Command_Say(client, args)
-{
-	if (!g_CanRTV || !client)
-	{
-		return Plugin_Continue;
-	}
-	
-	decl String:text[192];
-	if (!GetCmdArgString(text, sizeof(text)))
-	{
-		return Plugin_Continue;
-	}
-	
-	new startidx = 0;
-	if(text[strlen(text)-1] == '"')
-	{
-		text[strlen(text)-1] = '\0';
-		startidx = 1;
-	}
-	
-	new ReplySource:old = SetCmdReplySource(SM_REPLY_TO_CHAT);
-	
-	if (strcmp(text[startidx], "rtv", false) == 0 || strcmp(text[startidx], "rockthevote", false) == 0)
-	{
-		AttemptRTV(client);
-	}
-	
-	SetCmdReplySource(old);
-	
-	return Plugin_Continue;	
 }
 
 AttemptRTV(client, bool:isVoteMenu=false)
@@ -390,6 +372,8 @@ StartRTV()
 		new String:map[PLATFORM_MAX_PATH];
 		if (GetNextMap(map, sizeof(map)))
 		{
+			GetMapDisplayName(map, map, sizeof(map));
+			
 			CPrintToChatAll("[RTVE] %t", "Changing Maps", map);
 			CreateTimer(5.0, Timer_ChangeMap, _, TIMER_FLAG_NO_MAPCHANGE);
 			g_InChange = true;
