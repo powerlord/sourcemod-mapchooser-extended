@@ -43,7 +43,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define MCE_VERSION "1.11.0 beta 4"
+#define MCE_VERSION "1.11.0 beta 5"
 
 public Plugin myinfo =
 {
