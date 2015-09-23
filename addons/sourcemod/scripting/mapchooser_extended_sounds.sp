@@ -92,7 +92,8 @@ enum SoundType
 enum SoundStore
 {
 	String:SoundStore_Value[PLATFORM_MAX_PATH],
-	SoundType:SoundStore_Type
+	SoundType:SoundStore_Type,
+	Float:SoundStore_Volume
 }
 
 public Plugin myinfo = 
@@ -251,7 +252,7 @@ public void OnMapVoteWarningTick(int time)
 				}
 				else
 				{
-					EmitSoundToAllAny(soundData[SoundStore_Value]);
+					EmitSoundToAllAny(soundData[SoundStore_Value], .volume=soundData[SoundStore_Volume]);
 				}
 			}
 		}
@@ -296,7 +297,7 @@ void PlaySound(SoundEvent event)
 				}
 				else
 				{
-					EmitSoundToAllAny(soundData[SoundStore_Value]);
+					EmitSoundToAllAny(soundData[SoundStore_Value], .volume=soundData[SoundStore_Volume]);
 				}
 			}
 		}
@@ -400,7 +401,7 @@ void LoadSounds()
 												
 												// new key = StringToInt(time);
 												
-												soundData[SoundStore_Type] =  RetrieveSound(soundsKV, builtinSet, soundData[SoundStore_Value], PLATFORM_MAX_PATH);
+												soundData[SoundStore_Type] =  RetrieveSound(soundsKV, builtinSet, soundData[SoundStore_Value], PLATFORM_MAX_PATH, soundData[SoundStore_Volume]);
 												if (soundData[SoundStore_Type] == SoundType_None)
 												{
 													continue;
@@ -423,7 +424,7 @@ void LoadSounds()
 									{
 										int soundData[SoundStore];
 										
-										soundData[SoundStore_Type] = RetrieveSound(soundsKV, builtinSet, soundData[SoundStore_Value], PLATFORM_MAX_PATH);
+										soundData[SoundStore_Type] = RetrieveSound(soundsKV, builtinSet, soundData[SoundStore_Value], PLATFORM_MAX_PATH, soundData[SoundStore_Volume]);
 										
 										if (soundData[SoundStore_Type] == SoundType_None)
 										{
@@ -452,8 +453,10 @@ void LoadSounds()
 }
 
 // Internal LoadSounds function to get sound and type 
-SoundType RetrieveSound(KeyValues soundsKV, bool isBuiltin, char[] soundFile, int soundFileSize)
+SoundType RetrieveSound(KeyValues soundsKV, bool isBuiltin, char[] soundFile, int soundFileSize, float &volume=SNDVOL_NORMAL)
 {
+	volume = soundsKV.GetFloat("volume", SNDVOL_NORMAL);
+	
 	if (isBuiltin)
 	{
 		// event is considered before builtin, as it has related game data and should always be used in preference to builtin
