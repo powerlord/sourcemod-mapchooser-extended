@@ -1,0 +1,23 @@
+language: cpp
+compiler: clang
+sudo: false
+
+addons:
+  apt:
+    packages:
+      - g++-multilib
+
+install:
+  - wget http://www.sourcemod.net/smdrop/1.8/sourcemod-1.8.0-git5697-linux.tar.gz -O /tmp/sourcemod.tar.gz
+  - tar -xzvf /tmp/sourcemod.tar.gz
+
+before_script:
+  - chmod +rx addons/sourcemod/scripting/spcomp
+  - chmod +rx addons/sourcemod/scripting/compile.sh
+  - cd addons/sourcemod/scripting/
+  
+script:
+  - ./spcomp mapchooser_extended.sp
+  - ./spcomp mapchooser_extended_sounds.sp
+  - ./spcomp nominations_extended.sp
+  - ./spcomp rockthevote_extended.sp
