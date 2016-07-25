@@ -1,1 +1,0 @@
-Missing "Cannot Start Vote" and "Tie Vote"
