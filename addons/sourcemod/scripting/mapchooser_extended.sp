@@ -49,7 +49,7 @@
 #include "include/mapchooser_extended"
 #include <nextmap>
 #include <sdktools>
-#include <colors>
+#include <multicolors>
 
 #undef REQUIRE_PLUGIN
 #include <nativevotes>
@@ -209,7 +209,7 @@ enum WarningType
 #define LINE_TWO "##linetwo##"
 #define LINE_SPACER "##linespacer##"
 #define FAILURE_TIMER_LENGTH 5
-
+new oldmapsloaded = 0;
 public OnPluginStart()
 {
 	LoadTranslations("mapchooser_extended.phrases");
@@ -223,6 +223,25 @@ public OnPluginStart()
 	g_OldMapList = CreateArray(arraySize);
 	g_NextMapList = CreateArray(arraySize);
 	g_OfficialList = CreateArray(arraySize);
+	
+	decl String:oldfilepath[1024];
+    BuildPath(Path_SM,oldfilepath,PLATFORM_MAX_PATH,"configs/mapchooser_extended/lastmaps.txt");
+    new Handle:oldmapsfile=OpenFile(oldfilepath, "r");
+	
+	if(oldmapsfile != INVALID_HANDLE)
+	{
+		new String:linestr[256];
+		while (!IsEndOfFile(oldmapsfile) && ReadFileLine(oldmapsfile, linestr, sizeof(linestr)))
+		{
+			if (strlen(linestr) > 0)
+			{
+				PushArrayString(g_OldMapList, linestr);
+			}
+		}
+		oldmapsloaded = 1;
+	}
+	
+	CloseHandle(oldmapsfile);
 	
 	GetGameFolderName(g_GameModName, sizeof(g_GameModName));
 	
@@ -516,7 +535,22 @@ public OnMapEnd()
 	if (GetArraySize(g_OldMapList) > GetConVarInt(g_Cvar_ExcludeMaps))
 	{
 		RemoveFromArray(g_OldMapList, 0);
-	}	
+	}
+	decl String:oldfilepath[1024];
+    BuildPath(Path_SM,oldfilepath,PLATFORM_MAX_PATH,"configs/mapchooser_extended/lastmaps.txt");
+	DeleteFile(oldfilepath);
+	new Handle:oldmapsfile=OpenFile(oldfilepath, "w+");
+	
+	for (new j = 0; j < GetArraySize(g_OldMapList); j++)
+	{
+		GetArrayString(g_OldMapList, j, map, PLATFORM_MAX_PATH);
+		if (strlen(map) > 3)
+		{
+			WriteFileLine(oldmapsfile, map);
+		}
+	}
+	
+	CloseHandle(oldmapsfile);
 }
 
 public OnClientDisconnect(client)
@@ -1938,8 +1972,23 @@ public Native_GetExcludeMapList(Handle:plugin, numParams)
 	for (new i=0; i<size; i++)
 	{
 		GetArrayString(g_OldMapList, i, map, PLATFORM_MAX_PATH);
-		PushArrayString(array, map);	
+		PushArrayString(array, map);		
 	}
+	
+	decl String:oldfilepath[1024];
+    BuildPath(Path_SM,oldfilepath,PLATFORM_MAX_PATH,"configs/mapchooser_extended/lastmaps.txt");
+	
+    new Handle:oldmapsfile=OpenFile(oldfilepath, "w+");
+
+	for (new j = 0; j < GetArraySize(g_OldMapList); j++)
+	{
+		GetArrayString(g_OldMapList, j, map, PLATFORM_MAX_PATH);
+		if (strlen(map) > 3)
+		{
+			WriteFileLine(oldmapsfile, map);
+		}
+	}
+	CloseHandle(oldmapsfile);
 	
 	return;
 }
