@@ -126,6 +126,7 @@ new Handle:g_NominateOwners = INVALID_HANDLE;
 new Handle:g_OldMapList = INVALID_HANDLE;
 new Handle:g_NextMapList = INVALID_HANDLE;
 new Handle:g_VoteMenu = INVALID_HANDLE;
+new Handle:g_MapNames = INVALID_HANDLE;
 
 new g_Extends;
 new g_TotalRounds;
@@ -223,6 +224,7 @@ public OnPluginStart()
 	g_OldMapList = CreateArray(arraySize);
 	g_NextMapList = CreateArray(arraySize);
 	g_OfficialList = CreateArray(arraySize);
+	g_MapNames = CreateTrie();
 	
 	GetGameFolderName(g_GameModName, sizeof(g_GameModName));
 	
@@ -398,6 +400,7 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 	// MapChooser Extended natives
 	CreateNative("IsMapOfficial", Native_IsMapOfficial);
 	CreateNative("CanNominate", Native_CanNominate);
+	CreateNative("GetMapName", Native_GetMapName);
 	
 	return APLRes_Success;
 }
@@ -494,6 +497,7 @@ public OnConfigsExecuted()
 	}
 	
 	InitializeOfficialMapList();
+	InitializeMapNames();
 }
 
 public OnMapEnd()
@@ -569,6 +573,7 @@ public Action:Command_SetNextmap(client, args)
 public Action:Command_ReloadMaps(client, args)
 {
 	InitializeOfficialMapList();
+	InitializeMapNames();
 }
 
 public OnMapTimeLeftChanged()
@@ -1412,7 +1417,9 @@ public Handler_VoteFinishedGeneric(Handle:menu,
 		g_MapVoteCompleted = true;
 		
 		CPrintToChatAll("[MCE] %t", "Nextmap Voting Finished", map, RoundToFloor(float(item_info[0][VOTEINFO_ITEM_VOTES])/float(num_votes)*100), num_votes);
-		LogAction(-1, -1, "Voting for next map has finished. Nextmap: %s.", map);
+		decl String:mapName[PLATFORM_MAX_PATH];
+		getMapName(map, mapName, sizeof(mapName));
+		LogAction(-1, -1, "Voting for next map has finished. Nextmap: %s.", mapName);
 	}	
 }
 
@@ -2064,6 +2071,32 @@ stock SetupWarningTimer(WarningType:type, MapChange:when=MapChange_MapEnd, Handl
 	ResetPack(data);
 }
 
+stock InitializeMapNames()
+{
+	ClearTrie(g_MapNames);
+	decl String:mapNamesPath[PLATFORM_MAX_PATH];
+	BuildPath(Path_SM, mapNamesPath, PLATFORM_MAX_PATH, "configs/mapchooser_extended/maps_names/%s.txt", g_GameModName);
+	if (!FileExists(mapNamesPath))
+	{
+		LogMessage("Unable to find map name aliases for %s.", g_GameModName);
+		return;
+	}
+	new Handle:SMC = SMC_CreateParser(); 
+	SMC_SetReaders(SMC, NewSection, KeyValue, EndSection); 
+	SMC_ParseFile(SMC, mapNamesPath);
+	CloseHandle(SMC);
+}
+
+public SMCResult:NewSection(Handle:smc, const String:name[], bool:opt_quotes) { }
+public SMCResult:EndSection(Handle:smc) { }  
+public SMCResult:KeyValue(Handle:smc, const String:key[], const String:value[], bool:key_quotes, bool:value_quotes)
+{
+	if (!SetTrieString(g_MapNames, key, value, false))
+	{
+		LogMessage("A Map name for %s already exists!", key);
+	}
+}
+
 stock InitializeOfficialMapList()
 {
 	// If this fails, we want it to have an empty adt_array
@@ -2141,16 +2174,47 @@ public Native_CanNominate(Handle:plugin, numParams)
 	return _:CanNominate_Yes;
 }
 
+public Native_GetMapName(Handle:plugin, numParams)
+{
+	new len;
+	GetNativeStringLength(1, len);
+	
+	if (len <= 0)
+	{
+	  return false;
+	}
+	
+	new String:map[len+1];
+	GetNativeString(1, map, len+1);
+	len = GetNativeCell(3);
+	new String:mapName[len+1];
+	new bool:returnValue = getMapName(map, mapName, len);
+	SetNativeString(2, mapName, len);
+	return returnValue;
+}
+
+stock bool:getMapName(const String:map[], String:mapName[], size)
+{
+	if (GetTrieSize(g_MapNames) > 0 && GetTrieString(g_MapNames, map, mapName, size))
+	{
+		return true;
+	}
+	//Map Name not found or trie is empty.
+	strcopy(mapName, size, map);
+	return false;
+}
 
 stock AddMapItem(const String:map[])
 {
+	decl String:mapName[PLATFORM_MAX_PATH];
+	getMapName(map, mapName, sizeof(mapName));
 	if (g_NativeVotes)
 	{
-		NativeVotes_AddItem(g_VoteMenu, map, map);
+		NativeVotes_AddItem(g_VoteMenu, map, mapName);
 	}
 	else
 	{
-		AddMenuItem(g_VoteMenu, map, map);
+		AddMenuItem(g_VoteMenu, map, mapName);
 	}
 }
 

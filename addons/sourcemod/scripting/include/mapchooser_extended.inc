@@ -94,6 +94,16 @@ native bool:IsMapOfficial(const String:map[]);
  */
 native CanNominateResult:CanNominate();
 
+/**
+ * Retrieves the Display Name of the issued map.
+ *
+ * @param map 	Abolsute name of the map to lookup
+ * @param mapName The buffer of which the Map Name is stored
+ * @param size  The mapName buffer size
+ * @return		True if the map name was returned, flase if the map name was not resolved.
+ */
+native bool:GetMapName(const String:map[], String:mapName[], size);
+
 public SharedPlugin:__pl_mapchooser_extended = 
 {
 	name = "mapchooser",

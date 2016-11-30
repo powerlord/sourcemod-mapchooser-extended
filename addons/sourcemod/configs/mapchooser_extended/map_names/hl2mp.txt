@@ -1,0 +1,10 @@
+"Map Names"
+{
+	"dm_lockdown"	"Lockdown"
+	"dm_overwatch"	"Overwatch"
+	"dm_runoff"		"Runoff"
+	"dm_steamlab"	"Steamlab"
+	"dm_underpass"	"Underpass"
+	"dm_resistance"	"Resistance"
+	"dm_powerhouse"	"Powerhouse"
+}
