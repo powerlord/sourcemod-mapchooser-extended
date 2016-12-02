@@ -90,7 +90,7 @@ public OnPluginStart()
 	RegAdminCmd("sm_nominate_addmap", Command_Addmap, ADMFLAG_CHANGEMAP, "sm_nominate_addmap <mapname> - Forces a map to be on the next mapvote.");
 	
 	// Nominations Extended cvars
-	CreateConVar("ne_version", MCE_VERSION, "Nominations Extended Version", FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_NOTIFY|FCVAR_DONTRECORD);
+	CreateConVar("ne_version", MCE_VERSION, "Nominations Extended Version", FCVAR_SPONLY|FCVAR_NOTIFY|FCVAR_DONTRECORD);
 
 
 	g_mapTrie = CreateTrie();
@@ -387,6 +387,9 @@ public Handler_MapSelectMenu(Handle:menu, MenuAction:action, param1, param2)
 			decl String:map[PLATFORM_MAX_PATH], String:name[MAX_NAME_LENGTH];
 			GetMenuItem(menu, param2, map, sizeof(map));		
 			
+			decl String:mapName[PLATFORM_MAX_PATH];
+			getMapName(map, mapName, sizeof(mapName));
+			
 			GetClientName(param1, name, MAX_NAME_LENGTH);
 	
 			new NominateResult:result = NominateMap(map, false, param1);
@@ -407,11 +410,11 @@ public Handler_MapSelectMenu(Handle:menu, MenuAction:action, param1, param2)
 
 			if (result == Nominate_Replaced)
 			{
-				PrintToChatAll("[NE] %t", "Map Nomination Changed", name, map);
+				PrintToChatAll("[NE] %t", "Map Nomination Changed", name, mapName);
 				return 0;	
 			}
 			
-			PrintToChatAll("[NE] %t", "Map Nominated", name, map);
+			PrintToChatAll("[NE] %t", "Map Nominated", name, mapName);
 			LogMessage("%s nominated %s", name, map);
 		}
 		
@@ -478,7 +481,7 @@ public Handler_MapSelectMenu(Handle:menu, MenuAction:action, param1, param2)
 			}
 			else
 			{
-				strcopy(buffer, sizeof(buffer), map);
+				getMapName(map, buffer, sizeof(buffer));
 			}
 			
 			if ((status & MAPSTATUS_DISABLED) == MAPSTATUS_DISABLED)

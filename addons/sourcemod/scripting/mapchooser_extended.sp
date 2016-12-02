@@ -127,6 +127,8 @@ new Handle:g_OldMapList = INVALID_HANDLE;
 new Handle:g_NextMapList = INVALID_HANDLE;
 new Handle:g_VoteMenu = INVALID_HANDLE;
 new Handle:g_MapNames = INVALID_HANDLE;
+new Handle:g_MapNameUFilter = INVALID_HANDLE;
+new Handle:g_MapNameUReplace = INVALID_HANDLE;
 
 new g_Extends;
 new g_TotalRounds;
@@ -225,6 +227,8 @@ public OnPluginStart()
 	g_NextMapList = CreateArray(arraySize);
 	g_OfficialList = CreateArray(arraySize);
 	g_MapNames = CreateTrie();
+	g_MapNameUFilter = CreateArray(arraySize);
+	g_MapNameUReplace = CreateArray(arraySize);
 	
 	GetGameFolderName(g_GameModName, sizeof(g_GameModName));
 	
@@ -244,7 +248,7 @@ public OnPluginStart()
 	g_Cvar_VoteDuration = CreateConVar("mce_voteduration", "20", "Specifies how long the mapvote should be available for.", _, true, 5.0);
 
 	// MapChooser Extended cvars
-	CreateConVar("mce_version", MCE_VERSION, "MapChooser Extended Version", FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_NOTIFY|FCVAR_DONTRECORD);
+	CreateConVar("mce_version", MCE_VERSION, "MapChooser Extended Version", FCVAR_SPONLY|FCVAR_NOTIFY|FCVAR_DONTRECORD);
 
 	g_Cvar_RunOff = CreateConVar("mce_runoff", "1", "Hold run off votes if winning choice has less than a certain percentage of votes", _, true, 0.0, true, 1.0);
 	g_Cvar_RunOffPercent = CreateConVar("mce_runoffpercent", "50", "If winning choice has less than this percent of votes, hold a runoff", _, true, 0.0, true, 100.0);
@@ -1416,10 +1420,10 @@ public Handler_VoteFinishedGeneric(Handle:menu,
 		g_HasVoteStarted = false;
 		g_MapVoteCompleted = true;
 		
-		CPrintToChatAll("[MCE] %t", "Nextmap Voting Finished", map, RoundToFloor(float(item_info[0][VOTEINFO_ITEM_VOTES])/float(num_votes)*100), num_votes);
 		decl String:mapName[PLATFORM_MAX_PATH];
 		getMapName(map, mapName, sizeof(mapName));
-		LogAction(-1, -1, "Voting for next map has finished. Nextmap: %s.", mapName);
+		CPrintToChatAll("[MCE] %t", "Nextmap Voting Finished", mapName, RoundToFloor(float(item_info[0][VOTEINFO_ITEM_VOTES])/float(num_votes)*100), num_votes);
+		LogAction(-1, -1, "Voting for next map has finished. Nextmap: %s.", map);
 	}	
 }
 
@@ -2071,19 +2075,39 @@ stock SetupWarningTimer(WarningType:type, MapChange:when=MapChange_MapEnd, Handl
 	ResetPack(data);
 }
 
+new g_tempMapFile = 0;
 stock InitializeMapNames()
 {
 	ClearTrie(g_MapNames);
+	ClearArray(g_MapNameUFilter);
+	ClearArray(g_MapNameUReplace);
+	g_tempMapFile = 0;
 	decl String:mapNamesPath[PLATFORM_MAX_PATH];
-	BuildPath(Path_SM, mapNamesPath, PLATFORM_MAX_PATH, "configs/mapchooser_extended/maps_names/%s.txt", g_GameModName);
-	if (!FileExists(mapNamesPath))
-	{
-		LogMessage("Unable to find map name aliases for %s.", g_GameModName);
-		return;
-	}
 	new Handle:SMC = SMC_CreateParser(); 
 	SMC_SetReaders(SMC, NewSection, KeyValue, EndSection); 
 	SMC_ParseFile(SMC, mapNamesPath);
+	BuildPath(Path_SM, mapNamesPath, PLATFORM_MAX_PATH, "configs/mapchooser_extended/map_names/%s.txt", g_GameModName);
+	if (!FileExists(mapNamesPath))
+	{
+		LogMessage("Unable to find map name aliases for %s.", g_GameModName);
+	}
+	else
+	{
+		SMC_ParseFile(SMC, mapNamesPath);
+	}
+	
+	g_tempMapFile = 1;
+	SMC = SMC_CreateParser();
+	SMC_SetReaders(SMC, NewSection, KeyValue, EndSection);
+	BuildPath(Path_SM, mapNamesPath, PLATFORM_MAX_PATH, "configs/mapchooser_extended/map_names/universal.txt");
+	if (!FileExists(mapNamesPath))
+	{
+		LogMessage("Unable to find universal map name replacement");
+	}
+	else
+	{
+		SMC_ParseFile(SMC, mapNamesPath);
+	}
 	CloseHandle(SMC);
 }
 
@@ -2091,9 +2115,17 @@ public SMCResult:NewSection(Handle:smc, const String:name[], bool:opt_quotes) { 
 public SMCResult:EndSection(Handle:smc) { }  
 public SMCResult:KeyValue(Handle:smc, const String:key[], const String:value[], bool:key_quotes, bool:value_quotes)
 {
-	if (!SetTrieString(g_MapNames, key, value, false))
+	if (g_tempMapFile == 0)
 	{
-		LogMessage("A Map name for %s already exists!", key);
+		if (!SetTrieString(g_MapNames, key, value, false))
+		{
+			LogMessage("A Map name for %s already exists!", key);
+		}
+	}
+	if (g_tempMapFile == 1)
+	{
+		PushArrayString(g_MapNameUFilter, key);
+		PushArrayString(g_MapNameUReplace, value);
 	}
 }
 
@@ -2197,6 +2229,25 @@ stock bool:getMapName(const String:map[], String:mapName[], size)
 {
 	if (GetTrieSize(g_MapNames) > 0 && GetTrieString(g_MapNames, map, mapName, size))
 	{
+		return true;
+	}
+	int arraySize = GetArraySize(g_MapNameUFilter);
+	if (arraySize > 0)
+	{
+		decl String:tempMapName[PLATFORM_MAX_PATH];
+		strcopy(tempMapName, size, map);
+		decl String:tempFilter[PLATFORM_MAX_PATH];
+		decl String:tempReplacment[PLATFORM_MAX_PATH];
+		for (int i = 0; i < arraySize; i++)
+		{
+			GetArrayString(g_MapNameUFilter, i, tempFilter, sizeof(tempFilter));
+			if (StrContains(tempMapName, tempFilter, false) >= 0)
+			{
+				GetArrayString(g_MapNameUReplace, i, tempReplacment, sizeof(tempReplacment));
+				ReplaceString(tempMapName, sizeof(tempMapName), tempFilter, tempReplacment, false);
+			}
+		}
+		strcopy(mapName, size, tempMapName);
 		return true;
 	}
 	//Map Name not found or trie is empty.
