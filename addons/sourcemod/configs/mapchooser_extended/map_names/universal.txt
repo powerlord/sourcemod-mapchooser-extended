@@ -1,0 +1,16 @@
+"Map Name Replacements"
+{ //This file contains universal replacement of map names, so instead of display 'de_dust2', it will show 'dust2' this is used if the map is not found in the game files
+    "aim_"   ""
+    "ar_"    ""
+    "awp_"   ""
+    "cs_"    ""
+    "de_"    ""
+    "dm_"    ""
+    "fun_"   ""
+    "mg_"    ""
+    "pb_"    ""
+    "surf_"  ""
+    "ze_"    ""
+    "zm_"    ""
+    "_"      " " //Replaces under scores with spaces
+}

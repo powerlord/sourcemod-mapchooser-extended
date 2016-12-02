@@ -57,6 +57,7 @@ new Handle:g_Cvar_InitialDelay = INVALID_HANDLE;
 new Handle:g_Cvar_Interval = INVALID_HANDLE;
 new Handle:g_Cvar_ChangeTime = INVALID_HANDLE;
 new Handle:g_Cvar_RTVPostVoteAction = INVALID_HANDLE;
+new Handle:g_Cvar_DisplayName = INVALID_HANDLE;
 
 new bool:g_CanRTV = false;		// True if RTV loaded maps and is active.
 new bool:g_RTVAllowed = false;	// True if RTV is available to players. Used to delay rtv votes.
@@ -79,6 +80,7 @@ public OnPluginStart()
 	g_Cvar_Interval = CreateConVar("sm_rtv_interval", "240.0", "Time (in seconds) after a failed RTV before another can be held", 0, true, 0.00);
 	g_Cvar_ChangeTime = CreateConVar("sm_rtv_changetime", "0", "When to change the map after a succesful RTV: 0 - Instant, 1 - RoundEnd, 2 - MapEnd", _, true, 0.0, true, 2.0);
 	g_Cvar_RTVPostVoteAction = CreateConVar("sm_rtv_postvoteaction", "0", "What to do with RTV's after a mapvote has completed. 0 - Allow, success = instant change, 1 - Deny", _, true, 0.0, true, 1.0);
+	g_Cvar_DisplayName = CreateConVar("sm_rtv_displayname", "1", "Display the Map's custom name, instead of the raw map name", _, true, 0.0, true, 1.0);
 	
 	RegConsoleCmd("say", Command_Say);
 	RegConsoleCmd("say_team", Command_Say);
@@ -89,7 +91,7 @@ public OnPluginStart()
 	RegAdminCmd("mce_forcertv", Command_ForceRTV, ADMFLAG_CHANGEMAP, "Force an RTV vote");
 	
 	// Rock The Vote Extended cvars
-	CreateConVar("rtve_version", MCE_VERSION, "Rock The Vote Extended Version", FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_NOTIFY|FCVAR_DONTRECORD);
+	CreateConVar("rtve_version", MCE_VERSION, "Rock The Vote Extended Version", FCVAR_SPONLY|FCVAR_NOTIFY|FCVAR_DONTRECORD);
 	
 	AutoExecConfig(true, "rtv");
 }
@@ -272,7 +274,16 @@ StartRTV()
 		new String:map[PLATFORM_MAX_PATH];
 		if (GetNextMap(map, sizeof(map)))
 		{
-			CPrintToChatAll("[SM] %t", "Changing Maps", map);
+			if (GetConVarBool(g_Cvar_DisplayName))
+			{
+				new String:mapName[PLATFORM_MAX_PATH];
+				GetMapName(map, mapName, sizeof(mapName));
+				CPrintToChatAll("[SM] %t", "Changing Maps", mapName);
+			}
+			else
+			{
+				CPrintToChatAll("[SM] %t", "Changing Maps", map);
+			}
 			CreateTimer(5.0, Timer_ChangeMap, _, TIMER_FLAG_NO_MAPCHANGE);
 			g_InChange = true;
 			
