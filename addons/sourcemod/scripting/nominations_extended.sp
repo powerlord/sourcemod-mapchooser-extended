@@ -224,11 +224,16 @@ public Action:Command_Nominate(client, args)
 	}
 	
 	decl String:mapname[PLATFORM_MAX_PATH];
-	GetCmdArg(1, mapname, sizeof(mapname));
+	decl String:displayName[PLATFORM_MAX_PATH];
+	GetCmdArg(1, displayName, sizeof(displayName));
 	
 	new status;
-	if (!GetTrieValue(g_mapTrie, mapname, status))
+	if (FindMap(displayName, mapname, sizeof(mapname)) == FindMap_NotFound)
 	{
+		CReplyToCommand(client, "%t", "Map was not found", mapname);
+		return Plugin_Handled;		
+	}
+	if (!GetTrieValue(g_mapTrie, mapname, status)) {
 		CReplyToCommand(client, "%t", "Map was not found", mapname);
 		return Plugin_Handled;		
 	}

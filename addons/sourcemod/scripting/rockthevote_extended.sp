@@ -132,7 +132,7 @@ public OnClientConnected(client)
 	g_Voted[client] = false;
 
 	g_Voters++;
-	g_VotesNeeded = RoundToFloor(float(g_Voters) * GetConVarFloat(g_Cvar_Needed));
+	g_VotesNeeded = RoundToCeil(float(g_Voters) * GetConVarFloat(g_Cvar_Needed));
 	
 	return;
 }
@@ -149,7 +149,7 @@ public OnClientDisconnect(client)
 	
 	g_Voters--;
 	
-	g_VotesNeeded = RoundToFloor(float(g_Voters) * GetConVarFloat(g_Cvar_Needed));
+	g_VotesNeeded = RoundToCeil(float(g_Voters) * GetConVarFloat(g_Cvar_Needed));
 	
 	if (!g_CanRTV)
 	{
