@@ -275,7 +275,7 @@ public Action:Command_Nominate(client, args)
 	
 	decl String:name[MAX_NAME_LENGTH];
 	GetClientName(client, name, sizeof(name));
-	PrintToChatAll("[NE] %t", "Map Nominated", name, mapname);
+	CReplyToCommand(client, "[NE] %t", "Map Nominated", name, mapname);
 	LogMessage("%s nominated %s", name, mapname);
 
 	return Plugin_Continue;
